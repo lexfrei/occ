@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "description": "OpenClaw-Claude Connector — bridge between Claude Code Channels and OpenClaw",
   "type": "module",
-  "license": "Apache-2.0",
+  "license": "BSD-3-Clause",
   "author": "Aleksei Sviridkin <f@lex.la>",
   "bin": "./src/index.ts",
   "scripts": {
@@ -15,7 +15,8 @@
     "check": "bun run typecheck && bun run lint && bun run test"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.28.0"
+    "@modelcontextprotocol/sdk": "^1.28.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

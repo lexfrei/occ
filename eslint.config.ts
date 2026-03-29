@@ -58,6 +58,7 @@ export default tseslint.config(
       "max-lines": "off",
       "no-warning-comments": "off",
       "no-plusplus": "off",
+      camelcase: "off",
 
       "func-style": ["error", "declaration", { allowArrowFunctions: true }],
       "max-params": ["error", { max: 4 }],
@@ -94,6 +95,15 @@ export default tseslint.config(
         {
           selector: "import",
           format: ["camelCase", "PascalCase"],
+        },
+        {
+          selector: "objectLiteralProperty",
+          format: null,
+          filter: {
+            regex:
+              "^(authorization|content-type|Authorization|Content-Type|claude/channel|request_id|newlines-between|prefer-inline)",
+            match: true,
+          },
         },
       ],
       "@typescript-eslint/consistent-type-imports": [

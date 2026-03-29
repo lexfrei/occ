@@ -6,6 +6,7 @@
       "name": "occ",
       "dependencies": {
         "@modelcontextprotocol/sdk": "^1.28.0",
+        "zod": "^4.3.6",
       },
       "devDependencies": {
         "@eslint/js": "^10.0.1",
