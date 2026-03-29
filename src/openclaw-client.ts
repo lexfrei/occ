@@ -105,29 +105,6 @@ export class OpenClawClient {
     console.error(`[occ] reply delivered to session ${sessionKey}`);
   }
 
-  async sendReplyViaWebhook(text: string, channel: string, to: string): Promise<void> {
-    const url = `${this.baseUrl}/hooks/agent`;
-
-    const response = await fetch(url, {
-      method: "POST",
-      headers: makeHeaders(this.token, true),
-      body: JSON.stringify({
-        message: text,
-        deliver: true,
-        channel,
-        to,
-        sessionKey: `occ:bridge:${channel}`,
-      }),
-    });
-
-    if (!response.ok) {
-      const body = await response.text();
-      throw new Error(`OpenClaw webhook ${url} failed: ${String(response.status)} ${body}`);
-    }
-
-    console.error(`[occ] webhook reply delivered to ${channel}:${to}`);
-  }
-
   private async poll(): Promise<void> {
     const entries = await this.fetchHistory();
     const userMessages = entries.filter((entry) => entry.role === "user");
@@ -153,16 +130,22 @@ export class OpenClawClient {
     this.evictOldIds();
   }
 
+  private static entryKeyCounter = 0;
+
   private static entryKey(entry: HistoryEntry): string {
     if (entry.id) {
       return entry.id;
     }
 
+    // Use a counter suffix to prevent collision when content or timestamps match
+    OpenClawClient.entryKeyCounter += 1;
+    const suffix = String(OpenClawClient.entryKeyCounter);
+
     if (entry.timestamp) {
-      return `${entry.timestamp}:${entry.content.slice(0, 64)}`;
+      return `${entry.timestamp}:${suffix}`;
     }
 
-    return `hash:${entry.content}`;
+    return `noid:${suffix}:${entry.content.slice(0, 32)}`;
   }
 
   /** Prevent unbounded memory growth by capping the seen IDs set. */

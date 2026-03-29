@@ -149,6 +149,7 @@ export class GatewayWebSocket {
 
       ws.addEventListener("error", () => {
         console.error("[occ] WS connection error");
+        this.stopped = true;
         this.authReject?.(new Error("WebSocket connection failed"));
         this.authResolve = undefined;
         this.authReject = undefined;
@@ -175,10 +176,16 @@ export class GatewayWebSocket {
     raw: string,
     identity: Awaited<ReturnType<typeof getDeviceIdentity>>,
   ): Promise<void> {
-    const parsed: unknown = JSON.parse(raw);
+    const parsed = GatewayWebSocket.parseJsonFrame(raw);
 
     if (typeof parsed !== "object" || parsed === null || !("type" in parsed)) {
       console.error("[occ] WS received non-frame message, ignoring");
+      return;
+    }
+
+    const { type } = parsed as { type: unknown };
+
+    if (type !== "event" && type !== "res" && type !== "req") {
       return;
     }
 
@@ -310,6 +317,15 @@ export class GatewayWebSocket {
     };
 
     this.onMessage(message);
+  }
+
+  private static parseJsonFrame(raw: string): unknown {
+    try {
+      return JSON.parse(raw) as unknown;
+    } catch {
+      console.error("[occ] WS received malformed JSON, ignoring");
+      return null;
+    }
   }
 
   private async sendRequest(request: WsRequest): Promise<WsResponse> {

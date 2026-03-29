@@ -94,4 +94,56 @@ describe("loadConfig", () => {
 
     expect(config.pollIntervalMs).toBe(5000);
   });
+
+  it("parses OCC_TRANSPORT=ws", () => {
+    process.env["OPENCLAW_GATEWAY_TOKEN"] = "token";
+    process.env["OCC_TRANSPORT"] = "ws";
+
+    const config = loadConfig();
+
+    expect(config.transport).toBe("ws");
+  });
+
+  it("parses OCC_TRANSPORT=rest", () => {
+    process.env["OPENCLAW_GATEWAY_TOKEN"] = "token";
+    process.env["OCC_TRANSPORT"] = "rest";
+
+    const config = loadConfig();
+
+    expect(config.transport).toBe("rest");
+  });
+
+  it("defaults OCC_TRANSPORT to auto for invalid values", () => {
+    process.env["OPENCLAW_GATEWAY_TOKEN"] = "token";
+    process.env["OCC_TRANSPORT"] = "invalid";
+
+    const config = loadConfig();
+
+    expect(config.transport).toBe("auto");
+  });
+
+  it("defaults OCC_TRANSPORT to auto when unset", () => {
+    process.env["OPENCLAW_GATEWAY_TOKEN"] = "token";
+
+    const config = loadConfig();
+
+    expect(config.transport).toBe("auto");
+  });
+
+  it("respects custom session TTL", () => {
+    process.env["OPENCLAW_GATEWAY_TOKEN"] = "token";
+    process.env["OCC_SESSION_TTL_MS"] = "3600000";
+
+    const config = loadConfig();
+
+    expect(config.sessionTtlMs).toBe(3_600_000);
+  });
+
+  it("stores token in config correctly", () => {
+    process.env["OPENCLAW_GATEWAY_TOKEN"] = "super-secret-token-12345";
+
+    const config = loadConfig();
+
+    expect(config.openclawToken).toBe("super-secret-token-12345");
+  });
 });

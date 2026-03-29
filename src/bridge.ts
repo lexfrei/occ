@@ -49,7 +49,7 @@ export class Bridge {
     this.startCleanup();
   }
 
-  stop(): void {
+  async stop(): Promise<void> {
     this.transport.stop();
 
     if (this.cleanupTimer) {
@@ -57,9 +57,11 @@ export class Bridge {
       this.cleanupTimer = undefined;
     }
 
-    this.channel.close().catch((error: unknown) => {
+    try {
+      await this.channel.close();
+    } catch (error: unknown) {
       console.error(`[occ] MCP close error: ${toErrorMessage(error)}`);
-    });
+    }
   }
 
   private createTransport(mode: OccConfig["transport"]): Transport {
