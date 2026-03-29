@@ -5,6 +5,60 @@ Comprehensive test scenarios for the OCC bridge (OpenClaw ↔ Claude Code).
 **Environment:** OpenClaw Gateway (Docker) + OCC (Claude Code Channel) + Telegram bot.
 **Preconditions for all tests:** OpenClaw running, OCC connected, Telegram bot paired, auto-approve hooks installed.
 
+## State Cleanup
+
+Run between test sections or when tests produce unexpected results.
+
+**Full stack restart (clean slate):**
+
+```bash
+# 1. Kill Claude Code + OCC
+colima ssh -- bash -c "tmux kill-session -t occ 2>/dev/null"
+
+# 2. Restart OpenClaw (clears session state, reconnects Telegram)
+OPENCLAW_GATEWAY_TOKEN="$(cat /tmp/openclaw-data/.token)" docker compose restart openclaw-gateway
+
+# 3. Wait for gateway + Telegram
+sleep 15
+
+# 4. Start Claude Code + OCC fresh
+colima ssh -- bash -c '
+export PATH=$HOME/.bun/bin:$PATH
+export CLAUDE_CODE_OAUTH_TOKEN="<token>"
+cd /tmp/occ
+tmux new-session -d -s occ "claude --dangerously-load-development-channels server:occ --permission-mode acceptEdits"
+'
+
+# 5. Accept dev channel prompt
+sleep 8 && colima ssh -- bash -c "tmux send-keys -t occ Enter"
+
+# 6. Verify
+sleep 12 && colima ssh -- bash -c "curl --silent http://127.0.0.1:3456/health"
+```
+
+**Quick OCC restart (keeps OpenClaw sessions):**
+
+```bash
+colima ssh -- bash -c "tmux kill-session -t occ 2>/dev/null"
+# ... restart tmux with claude command ...
+```
+
+**Clear OpenClaw session history:**
+
+```bash
+OPENCLAW_GATEWAY_TOKEN="$(cat /tmp/openclaw-data/.token)" \
+  docker compose --profile cli run --rm openclaw-cli sessions clear main
+```
+
+**When to clean state:**
+
+- Before section 1 (core flow): full restart
+- Before section 6 (sessions): full restart (session tests need clean history)
+- Before section 7 (security): full restart (pairing state)
+- Before section 9 (hooks): full restart (hook state cached)
+- After any `[!]` failed test: full restart before retrying
+- Between individual tests: usually not needed (tests are independent)
+
 ## Legend
 
 - **P0** — critical, must pass for release
@@ -22,10 +76,10 @@ Status: `[ ]` not tested, `[x]` passed, `[!]` failed, `[-]` not applicable, `[~]
 
 | #     | Scenario                        | Steps                                     | Expected                                | Status |
 | ----- | ------------------------------- | ----------------------------------------- | --------------------------------------- | ------ |
-| 1.1.1 | Simple text message             | Send "Hello" to bot                       | Bot replies with a greeting             | `[ ]`  |
-| 1.1.2 | Question requiring reasoning    | Send "What is 2+2?"                       | Bot replies with "4" or explanation     | `[ ]`  |
+| 1.1.1 | Simple text message             | Send "Hello" to bot                       | Bot replies with a greeting             | `[x]`  |
+| 1.1.2 | Question requiring reasoning    | Send "What is 2+2?"                       | Bot replies with "4" or explanation     | `[x]`  |
 | 1.1.3 | Multi-sentence response         | Ask something requiring a detailed answer | Full response delivered, not truncated  | `[ ]`  |
-| 1.1.4 | Non-English message             | Send "Привет, как дела?"                  | Bot replies in Russian                  | `[ ]`  |
+| 1.1.4 | Non-English message             | Send "Привет, как дела?"                  | Bot replies in Russian                  | `[x]`  |
 | 1.1.5 | Empty message                   | Send whitespace-only message              | Bot ignores or OpenClaw filters it      | `[ ]`  |
 | 1.1.6 | Very long message (>4000 chars) | Send a large text block                   | Bot receives and processes full message | `[ ]`  |
 
@@ -56,22 +110,22 @@ Status: `[ ]` not tested, `[x]` passed, `[!]` failed, `[-]` not applicable, `[~]
 
 | #     | Scenario                        | Steps                                   | Expected                                                   | Status |
 | ----- | ------------------------------- | --------------------------------------- | ---------------------------------------------------------- | ------ |
-| 2.1.1 | Simple command                  | "Run `ls -la` in the project directory" | Claude executes ls, includes output in reply               | `[ ]`  |
+| 2.1.1 | Simple command                  | "Run `ls -la` in the project directory" | Claude executes ls, includes output in reply               | `[x]`  |
 | 2.1.2 | Package install                 | "Install cowsay with npm globally"      | Claude runs npm install, reports success                   | `[ ]`  |
 | 2.1.3 | Git operations                  | "What is the current git branch?"       | Claude runs git branch, reports result                     | `[ ]`  |
 | 2.1.4 | Command with long output        | "Show the contents of package.json"     | Full file contents included (possibly truncated by Claude) | `[ ]`  |
 | 2.1.5 | Failing command                 | "Run `cat nonexistent_file`"            | Claude reports the error, does not crash                   | `[ ]`  |
-| 2.1.6 | No permission prompt (headless) | Any command                             | Executes without prompting — auto-approve hook works       | `[ ]`  |
+| 2.1.6 | No permission prompt (headless) | Any command                             | Executes without prompting — auto-approve hook works       | `[x]`  |
 
 ### 2.2 File operations
 
 | #     | Scenario         | Steps                                        | Expected                                               | Status |
 | ----- | ---------------- | -------------------------------------------- | ------------------------------------------------------ | ------ |
-| 2.2.1 | Create file      | "Create a file called test.txt with 'hello'" | File created on disk                                   | `[ ]`  |
+| 2.2.1 | Create file      | "Create a file called test.txt with 'hello'" | File created on disk                                   | `[x]`  |
 | 2.2.2 | Edit file        | "Add a line to test.txt"                     | File modified                                          | `[ ]`  |
 | 2.2.3 | Read file        | "What's in test.txt?"                        | Contents reported                                      | `[ ]`  |
 | 2.2.4 | Edit ~/CLAUDE.md | "Add '# Test' to ~/CLAUDE.md"                | File created/edited without prompts                    | `[ ]`  |
-| 2.2.5 | Create skill     | "Create .claude/skills/hello/SKILL.md"       | Skill file created without prompts (auto-approve hook) | `[ ]`  |
+| 2.2.5 | Create skill     | "Create .claude/skills/hello/SKILL.md"       | Skill file created without prompts (auto-approve hook) | `[x]`  |
 
 ---
 
@@ -191,8 +245,8 @@ Status: `[ ]` not tested, `[x]` passed, `[!]` failed, `[-]` not applicable, `[~]
 | #     | Scenario                     | Steps                               | Expected          | Status |
 | ----- | ---------------------------- | ----------------------------------- | ----------------- | ------ |
 | 7.3.1 | Valid API token              | OpenClaw sends correct Bearer token | Request processed | `[ ]`  |
-| 7.3.2 | Invalid API token            | curl with wrong token               | 401 Unauthorized  | `[ ]`  |
-| 7.3.3 | Missing Authorization header | curl without auth                   | 401 Unauthorized  | `[ ]`  |
+| 7.3.2 | Invalid API token            | curl with wrong token               | 401 Unauthorized  | `[x]`  |
+| 7.3.3 | Missing Authorization header | curl without auth                   | 401 Unauthorized  | `[x]`  |
 
 ---
 
@@ -205,8 +259,8 @@ Status: `[ ]` not tested, `[x]` passed, `[!]` failed, `[-]` not applicable, `[~]
 | 8.1.1 | OCC not running                 | Stop OCC, send message                    | OpenClaw returns connection error to user              | `[ ]`  |
 | 8.1.2 | OCC restart during conversation | Kill and restart Claude Code + OCC        | Previous request lost. New messages work after restart | `[ ]`  |
 | 8.1.3 | OCC reply timeout               | Claude Code hangs (e.g., infinite loop)   | Error after OCC_REPLY_TIMEOUT_MS, user notified        | `[ ]`  |
-| 8.1.4 | Malformed request to OCC        | Send invalid JSON to /v1/chat/completions | 400 error response                                     | `[ ]`  |
-| 8.1.5 | Missing messages field          | Send `{"model": "test"}`                  | 400 error response                                     | `[ ]`  |
+| 8.1.4 | Malformed request to OCC        | Send invalid JSON to /v1/chat/completions | 400 error response                                     | `[x]`  |
+| 8.1.5 | Missing messages field          | Send `{"model": "test"}`                  | 400 error response                                     | `[x]`  |
 | 8.1.6 | Invalid message roles           | Send messages with `role: "admin"`        | 400 error response                                     | `[ ]`  |
 
 ### 8.2 OpenClaw errors
@@ -233,7 +287,7 @@ Status: `[ ]` not tested, `[x]` passed, `[!]` failed, `[-]` not applicable, `[~]
 
 | #     | Scenario                   | Steps                             | Expected                | Status |
 | ----- | -------------------------- | --------------------------------- | ----------------------- | ------ |
-| 9.1.1 | Bash command auto-approved | Ask Claude to run a shell command | Executes without prompt | `[ ]`  |
+| 9.1.1 | Bash command auto-approved | Ask Claude to run a shell command | Executes without prompt | `[x]`  |
 | 9.1.2 | File write auto-approved   | Ask Claude to create a file       | Created without prompt  | `[ ]`  |
 | 9.1.3 | Web fetch auto-approved    | Ask Claude to fetch a URL         | Fetched without prompt  | `[ ]`  |
 
@@ -241,8 +295,8 @@ Status: `[ ]` not tested, `[x]` passed, `[!]` failed, `[-]` not applicable, `[~]
 
 | #     | Scenario                 | Steps                              | Expected                                          | Status |
 | ----- | ------------------------ | ---------------------------------- | ------------------------------------------------- | ------ |
-| 9.2.1 | .claude/ directory write | Create a skill file                | Created without prompt (hook bypasses protection) | `[ ]`  |
-| 9.2.2 | mkdir in .claude/        | Ask to create .claude/skills/test/ | Created without prompt                            | `[ ]`  |
+| 9.2.1 | .claude/ directory write | Create a skill file                | Created without prompt (hook bypasses protection) | `[x]`  |
+| 9.2.2 | mkdir in .claude/        | Ask to create .claude/skills/test/ | Created without prompt                            | `[x]`  |
 
 ### 9.3 Without hooks (control test)
 
@@ -259,7 +313,7 @@ Status: `[ ]` not tested, `[x]` passed, `[!]` failed, `[-]` not applicable, `[~]
 
 | #      | Scenario               | Steps                                      | Expected                                                                          | Status |
 | ------ | ---------------------- | ------------------------------------------ | --------------------------------------------------------------------------------- | ------ |
-| 10.1.1 | Non-streaming response | `stream: false`                            | JSON response with `choices[].message.content`                                    | `[ ]`  |
+| 10.1.1 | Non-streaming response | `stream: false`                            | JSON response with `choices[].message.content`                                    | `[x]`  |
 | 10.1.2 | Streaming response     | `stream: true`                             | SSE stream with `data:` lines and `[DONE]`                                        | `[ ]`  |
 | 10.1.3 | Missing stream field   | Omit `stream`                              | Non-streaming response (default)                                                  | `[ ]`  |
 | 10.1.4 | String content         | `content: "hello"`                         | Processed as text                                                                 | `[ ]`  |
@@ -270,15 +324,15 @@ Status: `[ ]` not tested, `[x]` passed, `[!]` failed, `[-]` not applicable, `[~]
 
 | #      | Scenario    | Steps          | Expected                                                        | Status |
 | ------ | ----------- | -------------- | --------------------------------------------------------------- | ------ |
-| 10.2.1 | List models | GET /v1/models | Returns `claude-code` with context_window and max_output_tokens | `[ ]`  |
+| 10.2.1 | List models | GET /v1/models | Returns `claude-code` with context_window and max_output_tokens | `[x]`  |
 
 ### 10.3 /health
 
 | #      | Scenario     | Steps        | Expected                         | Status |
 | ------ | ------------ | ------------ | -------------------------------- | ------ |
-| 10.3.1 | GET /health  | curl         | `{"ok": true, "version": "..."}` | `[ ]`  |
-| 10.3.2 | GET /healthz | curl         | Same response                    | `[ ]`  |
-| 10.3.3 | POST /health | curl -X POST | 404 (method not allowed)         | `[ ]`  |
+| 10.3.1 | GET /health  | curl         | `{"ok": true, "version": "..."}` | `[x]`  |
+| 10.3.2 | GET /healthz | curl         | Same response                    | `[x]`  |
+| 10.3.3 | POST /health | curl -X POST | 404 (method not allowed)         | `[x]`  |
 
 ---
 
@@ -291,7 +345,7 @@ Status: `[ ]` not tested, `[x]` passed, `[!]` failed, `[-]` not applicable, `[~]
 | 11.1.1 | Channel metadata in notification | Send from Telegram               | Notification meta includes `channel: "telegram"`                          | `[ ]`  |
 | 11.1.2 | History included                 | Send 3+ messages in conversation | Claude sees "Conversation context" with preceding messages                | `[ ]`  |
 | 11.1.3 | History truncated to 3           | Send 10 messages                 | Only last 3 preceding messages shown, with "[N earlier messages omitted]" | `[ ]`  |
-| 11.1.4 | System prompt summary            | OpenClaw includes system prompt  | First 500 chars forwarded as `[Agent context: ...]`                       | `[ ]`  |
+| 11.1.4 | System prompt summary            | OpenClaw includes system prompt  | First 500 chars forwarded as `[Agent context: ...]`                       | `[x]`  |
 | 11.1.5 | Trailing assistant excluded      | Messages after last user message | NOT included in history                                                   | `[ ]`  |
 | 11.1.6 | Image URL forwarded              | Send photo with caption          | Claude sees `[Image: <url>]` in notification                              | `[ ]`  |
 | 11.1.7 | Multiple images                  | Send message with 2+ images      | All image URLs listed as separate `[Image: ...]` lines                    | `[ ]`  |
@@ -364,11 +418,11 @@ Run before testing any other scenarios.
 
 | #    | Check                        | Command/Action                                                         | Expected                                                               | Status |
 | ---- | ---------------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------- | ------ |
-| 14.1 | OpenClaw healthy             | `curl http://127.0.0.1:18789/healthz`                                  | `{"ok":true}`                                                          | `[ ]`  |
-| 14.2 | OCC healthy                  | `curl http://127.0.0.1:3456/health`                                    | `{"ok":true, "version":"..."}`                                         | `[ ]`  |
-| 14.3 | OCC reachable from OpenClaw  | `docker exec <container> curl http://host.docker.internal:3456/health` | `{"ok":true}`                                                          | `[ ]`  |
-| 14.4 | Telegram bot connected       | `openclaw channels status`                                             | `telegram default: enabled, running`                                   | `[ ]`  |
-| 14.5 | Agent model correct          | Check gateway logs                                                     | `agent model: occ/claude-code`                                         | `[ ]`  |
+| 14.1 | OpenClaw healthy             | `curl http://127.0.0.1:18789/healthz`                                  | `{"ok":true}`                                                          | `[x]`  |
+| 14.2 | OCC healthy                  | `curl http://127.0.0.1:3456/health`                                    | `{"ok":true, "version":"..."}`                                         | `[x]`  |
+| 14.3 | OCC reachable from OpenClaw  | `docker exec <container> curl http://host.docker.internal:3456/health` | `{"ok":true}`                                                          | `[x]`  |
+| 14.4 | Telegram bot connected       | `openclaw channels status`                                             | `telegram default: enabled, running`                                   | `[x]`  |
+| 14.5 | Agent model correct          | Check gateway logs                                                     | `agent model: occ/claude-code`                                         | `[x]`  |
 | 14.6 | Claude Code listening        | Check tmux session                                                     | `Listening for channel messages from: server:occ`                      | `[ ]`  |
-| 14.7 | Auto-approve hooks installed | `.claude/hooks/auto-approve.sh` exists and executable                  | `echo test \| .claude/hooks/auto-approve.sh` returns JSON with `allow` | `[ ]`  |
+| 14.7 | Auto-approve hooks installed | `.claude/hooks/auto-approve.sh` exists and executable                  | `echo test \| .claude/hooks/auto-approve.sh` returns JSON with `allow` | `[x]`  |
 | 14.8 | Telegram pairing approved    | Send message from approved user                                        | Response received, not pairing code                                    | `[ ]`  |
