@@ -31,10 +31,13 @@ describe("OpenClawApi", () => {
         }
 
         if (body.includes("with-id")) {
-          return Response.json({ ok: true, id: "msg-456" });
+          return Response.json({
+            ok: true,
+            result: { details: { messageId: "msg-456", chatId: "123" } },
+          });
         }
 
-        return Response.json({ ok: true });
+        return Response.json({ ok: true, result: {} });
       },
     });
   });
@@ -43,22 +46,26 @@ describe("OpenClawApi", () => {
     await mockServer?.stop();
   });
 
-  it("sends message via /hooks/agent with auth header", async () => {
+  it("sends message via /tools/invoke with auth header", async () => {
     const api = new OpenClawApi(`http://127.0.0.1:${String(port)}`, "test-gw-token");
 
     const result = await api.sendMessage("telegram", "12345", "Hello from OCC");
 
     expect(result.delivered).toBe(true);
     expect(lastRequest?.method).toBe("POST");
-    expect(lastRequest?.url).toContain("/hooks/agent");
+    expect(lastRequest?.url).toContain("/tools/invoke");
     expect(lastRequest?.headers["authorization"]).toBe("Bearer test-gw-token");
 
     const body = JSON.parse(lastRequest?.body ?? "{}") as Record<string, unknown>;
 
-    expect(body["deliver"]).toBe(true);
-    expect(body["channel"]).toBe("telegram");
-    expect(body["to"]).toBe("12345");
-    expect(body["message"]).toBe("Hello from OCC");
+    expect(body["tool"]).toBe("message");
+    expect(body["action"]).toBe("send");
+
+    const args = body["args"] as Record<string, unknown>;
+
+    expect(args["channel"]).toBe("telegram");
+    expect(args["to"]).toBe("12345");
+    expect(args["message"]).toBe("Hello from OCC");
   });
 
   it("returns messageId when API provides one", async () => {

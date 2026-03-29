@@ -1,5 +1,7 @@
 /**
  * OpenClaw Gateway REST API client for proactive message delivery.
+ * Uses POST /tools/invoke with the "message" tool for direct delivery
+ * without triggering an agent turn.
  */
 
 /** Result of sending a message through OpenClaw. */
@@ -21,9 +23,9 @@ export class OpenClawApi {
     this.token = token;
   }
 
-  /** Send a message to a specific channel/user via /hooks/agent. */
+  /** Send a message directly to a channel/user via /tools/invoke (no agent turn). */
   async sendMessage(channel: string, to: string, text: string): Promise<DeliveryResult> {
-    const url = `${this.baseUrl}/hooks/agent`;
+    const url = `${this.baseUrl}/tools/invoke`;
 
     const response = await fetch(url, {
       method: "POST",
@@ -32,10 +34,13 @@ export class OpenClawApi {
         "content-type": "application/json",
       }),
       body: JSON.stringify({
-        message: text,
-        deliver: true,
-        channel,
-        to,
+        tool: "message",
+        action: "send",
+        args: {
+          channel,
+          to,
+          message: text,
+        },
       }),
       signal: AbortSignal.timeout(30_000),
     });
@@ -46,8 +51,14 @@ export class OpenClawApi {
     }
 
     try {
-      const body = (await response.json()) as Record<string, unknown>;
-      const messageId = typeof body["id"] === "string" ? body["id"] : undefined;
+      const body = (await response.json()) as {
+        ok?: boolean;
+        result?: { details?: { messageId?: string } };
+      };
+      const messageId =
+        typeof body.result?.details?.messageId === "string"
+          ? body.result.details.messageId
+          : undefined;
       return { delivered: true, messageId };
     } catch {
       return { delivered: true, messageId: undefined };
