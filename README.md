@@ -133,6 +133,8 @@ Then add to `.claude/settings.local.json`:
 
 This gives Claude Code full autonomy — `PreToolUse` hook auto-approves all tool calls, `PermissionRequest` hook bypasses `.claude/` directory protection for skill and agent creation.
 
+> **Single-tenant only.** Auto-approve hooks grant Claude Code unrestricted access to the filesystem, shell, and network. Use only in isolated environments (VMs, containers) where you are the sole operator and accept full responsibility for Claude Code's actions.
+
 ## Configuration
 
 | Variable        | Default            | Description                                                          |
