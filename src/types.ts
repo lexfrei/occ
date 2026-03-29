@@ -1,7 +1,8 @@
 /** OpenAI content block (multimodal format). */
-interface ContentBlock {
+export interface ContentBlock {
   readonly type: string;
   readonly text?: string;
+  readonly image_url?: { readonly url: string };
 }
 
 /** OpenAI chat completion message. Content can be string or array of blocks. */

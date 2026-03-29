@@ -26,8 +26,8 @@ const CHANNEL_INSTRUCTIONS = [
 ].join("\n");
 
 type ReplyCallback = (text: string) => void;
-type NotifyCallback = (channel: string, to: string, text: string) => Promise<void>;
-type SendFileCallback = (channel: string, to: string, filePath: string) => Promise<void>;
+type NotifyCallback = (channel: string, to: string, text: string) => Promise<string>;
+type SendFileCallback = (channel: string, to: string, filePath: string) => Promise<string>;
 
 export class McpChannel {
   private readonly mcpServer: McpServer;
@@ -179,8 +179,8 @@ export class McpChannel {
         }
 
         try {
-          await this.notifyHandler(channel, to, text);
-          return { content: [{ type: "text", text: `Sent to ${channel}:${to}` }] };
+          const status = await this.notifyHandler(channel, to, text);
+          return { content: [{ type: "text", text: status }] };
         } catch (error: unknown) {
           return {
             content: [{ type: "text", text: `Failed: ${toErrorMessage(error)}` }],
@@ -224,8 +224,8 @@ export class McpChannel {
         }
 
         try {
-          await this.sendFileHandler(channel, to, filePath);
-          return { content: [{ type: "text", text: `File sent to ${channel}:${to}` }] };
+          const status = await this.sendFileHandler(channel, to, filePath);
+          return { content: [{ type: "text", text: status }] };
         } catch (error: unknown) {
           return {
             content: [{ type: "text", text: `Failed: ${toErrorMessage(error)}` }],

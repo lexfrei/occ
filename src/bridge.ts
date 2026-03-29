@@ -73,17 +73,26 @@ export class Bridge {
 
     this.channel.onNotify(async (channel, to, text) => {
       console.error(`[occ] proactive → ${channel}:${to}: ${text.slice(0, 80)}`);
-      await api.sendMessage(channel, to, text);
+      const result = await api.sendMessage(channel, to, text);
+      return result.messageId
+        ? `Sent to ${channel}:${to} (id: ${result.messageId})`
+        : `Sent to ${channel}:${to}`;
     });
 
     this.channel.onSendFile(async (channel, to, filePath) => {
       const file = await validateAndReadFile(filePath, cwd);
       console.error(`[occ] send_file → ${channel}:${to}: ${file.fileName}`);
+
+      const lang = file.extension || "text";
       const truncationNote = file.truncated
         ? `\n[truncated, showing first ${String(file.content.length)} of ${String(file.originalLength)} chars]`
         : "";
 
-      await api.sendMessage(channel, to, `${file.fileName}:\n${file.content}${truncationNote}`);
+      const message = `${file.fileName}:\n\`\`\`${lang}\n${file.content}\n\`\`\`${truncationNote}`;
+      const result = await api.sendMessage(channel, to, message);
+      return result.messageId
+        ? `File sent to ${channel}:${to} (id: ${result.messageId})`
+        : `File sent to ${channel}:${to}`;
     });
 
     console.error("[occ] proactive messaging enabled");

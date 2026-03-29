@@ -100,6 +100,81 @@ describe("HttpServer", () => {
     expect(text).toContain("data: [DONE]");
   });
 
+  it("streams long response in multiple chunks without extra spaces", async () => {
+    const longMessage =
+      "The quick brown fox jumps over the lazy dog and then runs around the park several times before resting.";
+
+    const response = await fetch(`http://127.0.0.1:${String(port)}/v1/chat/completions`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer test-token",
+      },
+      body: JSON.stringify({
+        model: "claude-code",
+        messages: [{ role: "user", content: longMessage }],
+        stream: true,
+      }),
+    });
+
+    const text = await response.text();
+    const dataLines = text
+      .split("\n")
+      .filter((line) => line.startsWith("data: ") && line !== "data: [DONE]");
+
+    // Should have multiple content chunks (role + N content + done)
+    expect(dataLines.length).toBeGreaterThan(2);
+
+    // Reconstruct full text from deltas
+    let reconstructed = "";
+
+    for (const line of dataLines) {
+      const json = JSON.parse(line.slice(6)) as { choices: { delta: { content?: string } }[] };
+      const delta = json.choices[0]?.delta.content;
+
+      if (delta) {
+        reconstructed += delta;
+      }
+    }
+
+    expect(reconstructed).toBe(`echo: ${longMessage}`);
+  });
+
+  it("streams text with no spaces correctly (hard-split)", async () => {
+    const noSpaces = "a".repeat(120);
+
+    const response = await fetch(`http://127.0.0.1:${String(port)}/v1/chat/completions`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer test-token",
+      },
+      body: JSON.stringify({
+        model: "claude-code",
+        messages: [{ role: "user", content: noSpaces }],
+        stream: true,
+      }),
+    });
+
+    const text = await response.text();
+    const dataLines = text
+      .split("\n")
+      .filter((line) => line.startsWith("data: ") && line !== "data: [DONE]");
+
+    let reconstructed = "";
+
+    for (const line of dataLines) {
+      const json = JSON.parse(line.slice(6)) as { choices: { delta: { content?: string } }[] };
+      const delta = json.choices[0]?.delta.content;
+
+      if (delta) {
+        reconstructed += delta;
+      }
+    }
+
+    expect(reconstructed).toBe(`echo: ${noSpaces}`);
+  });
+
   it("returns model list", async () => {
     const response = await fetch(`http://127.0.0.1:${String(port)}/v1/models`);
 

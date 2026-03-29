@@ -7,11 +7,12 @@ import { realpathSync } from "node:fs";
 import path from "node:path";
 
 const MAX_FILE_SIZE = 1_000_000;
-const MAX_CONTENT_CHARS = 4000;
+const MAX_CONTENT_CHARS = 8000;
 
 interface ValidFile {
   readonly content: string;
   readonly fileName: string;
+  readonly extension: string;
   readonly truncated: boolean;
   readonly originalLength: number;
 }
@@ -55,9 +56,13 @@ export async function validateAndReadFile(filePath: string, cwd: string): Promis
   const truncated = fullContent.length > MAX_CONTENT_CHARS;
   const content = truncated ? fullContent.slice(0, MAX_CONTENT_CHARS) : fullContent;
 
+  const fileName = path.basename(resolved);
+  const extension = path.extname(resolved).slice(1).toLowerCase();
+
   return {
     content,
-    fileName: path.basename(resolved),
+    fileName,
+    extension,
     truncated,
     originalLength: fullContent.length,
   };

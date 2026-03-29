@@ -1,9 +1,12 @@
 /**
  * OpenClaw Gateway REST API client for proactive message delivery.
- *
- * Used when Claude Code wants to send messages outside the
- * request-response cycle (e.g., proactive notifications).
  */
+
+/** Result of sending a message through OpenClaw. */
+export interface DeliveryResult {
+  readonly delivered: boolean;
+  readonly messageId: string | undefined;
+}
 
 export class OpenClawApi {
   private readonly baseUrl: string;
@@ -19,7 +22,7 @@ export class OpenClawApi {
   }
 
   /** Send a message to a specific channel/user via /hooks/agent. */
-  async sendMessage(channel: string, to: string, text: string): Promise<void> {
+  async sendMessage(channel: string, to: string, text: string): Promise<DeliveryResult> {
     const url = `${this.baseUrl}/hooks/agent`;
 
     const response = await fetch(url, {
@@ -42,8 +45,13 @@ export class OpenClawApi {
       throw new Error(`OpenClaw POST failed: ${String(response.status)} ${body.slice(0, 200)}`);
     }
 
-    // Drain response body (Bun reuses connections automatically, but explicit drain is safer)
-    await response.arrayBuffer();
+    try {
+      const body = (await response.json()) as Record<string, unknown>;
+      const messageId = typeof body["id"] === "string" ? body["id"] : undefined;
+      return { delivered: true, messageId };
+    } catch {
+      return { delivered: true, messageId: undefined };
+    }
   }
 
   /** Check if the API is configured and available. */

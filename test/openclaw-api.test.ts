@@ -25,8 +25,13 @@ describe("OpenClawApi", () => {
         };
 
         const { body } = lastRequest;
+
         if (body.includes("trigger-error")) {
           return new Response("Internal Server Error", { status: 500 });
+        }
+
+        if (body.includes("with-id")) {
+          return Response.json({ ok: true, id: "msg-456" });
         }
 
         return Response.json({ ok: true });
@@ -41,8 +46,9 @@ describe("OpenClawApi", () => {
   it("sends message via /hooks/agent with auth header", async () => {
     const api = new OpenClawApi(`http://127.0.0.1:${String(port)}`, "test-gw-token");
 
-    await api.sendMessage("telegram", "12345", "Hello from OCC");
+    const result = await api.sendMessage("telegram", "12345", "Hello from OCC");
 
+    expect(result.delivered).toBe(true);
     expect(lastRequest?.method).toBe("POST");
     expect(lastRequest?.url).toContain("/hooks/agent");
     expect(lastRequest?.headers["authorization"]).toBe("Bearer test-gw-token");
@@ -53,6 +59,24 @@ describe("OpenClawApi", () => {
     expect(body["channel"]).toBe("telegram");
     expect(body["to"]).toBe("12345");
     expect(body["message"]).toBe("Hello from OCC");
+  });
+
+  it("returns messageId when API provides one", async () => {
+    const api = new OpenClawApi(`http://127.0.0.1:${String(port)}`, "token");
+
+    const result = await api.sendMessage("telegram", "123", "with-id test");
+
+    expect(result.delivered).toBe(true);
+    expect(result.messageId).toBe("msg-456");
+  });
+
+  it("returns undefined messageId when API omits it", async () => {
+    const api = new OpenClawApi(`http://127.0.0.1:${String(port)}`, "token");
+
+    const result = await api.sendMessage("telegram", "123", "no-id test");
+
+    expect(result.delivered).toBe(true);
+    expect(result.messageId).toBeUndefined();
   });
 
   it("throws on non-200 API response", async () => {

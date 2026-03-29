@@ -98,7 +98,7 @@ Claude Code gets three tools through the OCC channel:
 | ----------- | --------------------------- | -------------------------------------------------------------------------------------------------- |
 | `reply`     | `text`                      | Respond to the current message (synchronous, delivered as HTTP response)                           |
 | `notify`    | `channel`, `to`, `text`     | Send a proactive message to any channel/user (works anytime)                                       |
-| `send_file` | `channel`, `to`, `filePath` | Read a local file and send its content to a channel/user (text, max 1MB, truncated to ~4000 chars) |
+| `send_file` | `channel`, `to`, `filePath` | Read a local file, wrap in code fence with syntax highlighting (max 1MB, truncated to ~8000 chars) |
 
 `reply` works during an active request. `notify` and `send_file` work anytime — they call the OpenClaw REST API directly and require `OPENCLAW_GATEWAY_TOKEN`.
 
@@ -218,7 +218,9 @@ bun run test         # bun test
 - **Research preview** — Claude Code Channels are in [research preview](https://code.claude.com/docs/en/channels#research-preview). The `--dangerously-load-development-channels` flag and protocol may change.
 - **Sequential requests** — OCC handles one request at a time. A second message waits for the timeout (`OCC_REPLY_TIMEOUT_MS`, default 2 minutes).
 - **No tool calling from OpenClaw** — custom model providers don't receive tool definitions from OpenClaw. Claude Code uses its own tools via MCP, not OpenClaw's.
-- **System prompt not forwarded** — OpenClaw's system prompt (skills, memory, SOUL.md) is not forwarded to Claude Code. Claude Code uses its own project context. Up to 3 preceding conversation messages (before the current user message, excluding system) are included for context.
+- **System prompt partially forwarded** — first 500 chars of OpenClaw's system prompt forwarded as `[Agent context: ...]`. Full SOUL.md/MEMORY.md not available. Up to 3 preceding conversation messages included for context.
+- **Images forwarded as URLs only** — image URLs from multimodal messages appear as `[Image: <url>]`. Claude Code cannot view the actual images.
+- **Files sent as text** — `send_file` wraps content in code fences, but sends as text message, not as a platform file attachment.
 
 ## License
 

@@ -19,6 +19,7 @@ describe("validateAndReadFile", () => {
     expect(result.fileName).toBe("hello.txt");
     expect(result.truncated).toBe(false);
     expect(result.originalLength).toBe(11);
+    expect(result.extension).toBe("txt");
   });
 
   it("rejects path traversal with ../", () => {
@@ -71,14 +72,23 @@ describe("validateAndReadFile", () => {
     expect(promise).rejects.toThrow("too large");
   });
 
-  it("truncates content over 4000 chars and reports truncation", async () => {
+  it("truncates content over 8000 chars and reports truncation", async () => {
     const filePath = path.join(testDirectory, "long.txt");
-    writeFileSync(filePath, "y".repeat(10_000));
+    writeFileSync(filePath, "y".repeat(20_000));
 
     const result = await validateAndReadFile("long.txt", testDirectory);
 
     expect(result.truncated).toBe(true);
-    expect(result.content).toHaveLength(4000);
-    expect(result.originalLength).toBe(10_000);
+    expect(result.content).toHaveLength(8000);
+    expect(result.originalLength).toBe(20_000);
+  });
+
+  it("returns file extension", async () => {
+    const filePath = path.join(testDirectory, "code.ts");
+    writeFileSync(filePath, "const x = 1;");
+
+    const result = await validateAndReadFile("code.ts", testDirectory);
+
+    expect(result.extension).toBe("ts");
   });
 });

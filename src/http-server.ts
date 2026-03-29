@@ -173,21 +173,61 @@ export class HttpServer {
     }
   }
 
+  /** Split text into chunks of ~50 chars at word boundaries. */
+  private static splitIntoChunks(text: string, targetSize: number): string[] {
+    const chunks: string[] = [];
+    let remaining = text;
+
+    while (remaining.length > 0) {
+      if (remaining.length <= targetSize) {
+        chunks.push(remaining);
+        break;
+      }
+
+      const spaceAt = remaining.lastIndexOf(" ", targetSize);
+
+      if (spaceAt > 0) {
+        // Include the space at the end of this chunk to preserve word boundaries
+        chunks.push(remaining.slice(0, spaceAt + 1));
+        remaining = remaining.slice(spaceAt + 1);
+      } else {
+        chunks.push(remaining.slice(0, targetSize));
+        remaining = remaining.slice(targetSize);
+      }
+    }
+
+    return chunks;
+  }
+
   private static streamResponse(completionId: string, timestamp: number, text: string): Response {
     const encoder = new TextEncoder();
+    const chunks = HttpServer.splitIntoChunks(text, 50);
 
     const stream = new ReadableStream({
       start(controller): void {
-        const chunk = {
+        // Role chunk (first)
+        const roleChunk = {
           id: completionId,
           object: "chat.completion.chunk",
           created: timestamp,
           model: "claude-code",
-          choices: [{ index: 0, delta: { role: "assistant", content: text }, finish_reason: null }],
+          choices: [{ index: 0, delta: { role: "assistant", content: "" }, finish_reason: null }],
         };
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(roleChunk)}\n\n`));
 
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
+        // Content chunks
+        for (const piece of chunks) {
+          const contentChunk = {
+            id: completionId,
+            object: "chat.completion.chunk",
+            created: timestamp,
+            model: "claude-code",
+            choices: [{ index: 0, delta: { content: piece }, finish_reason: null }],
+          };
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(contentChunk)}\n\n`));
+        }
 
+        // Done chunk
         const done = {
           id: completionId,
           object: "chat.completion.chunk",
