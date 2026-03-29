@@ -133,7 +133,7 @@ Then add to `.claude/settings.local.json`:
 
 This gives Claude Code full autonomy — `PreToolUse` hook auto-approves all tool calls, `PermissionRequest` hook bypasses `.claude/` directory protection for skill and agent creation.
 
-> **Single-tenant only.** Auto-approve hooks grant Claude Code unrestricted access to the filesystem, shell, and network. Use only in isolated environments (VMs, containers) where you are the sole operator and accept full responsibility for Claude Code's actions.
+> **Run in an isolated environment.** Auto-approve hooks grant Claude Code unrestricted access to the filesystem, shell, and network. There are no guardrails — Claude Code can read, write, and execute anything. Always run OCC inside a dedicated VM or container (Colima, Docker, devcontainer), never on a host machine with access to sensitive data, credentials, or production infrastructure. You are solely responsible for any actions Claude Code takes.
 
 ## Configuration
 
