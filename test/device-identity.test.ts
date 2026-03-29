@@ -8,7 +8,7 @@ describe("device identity", () => {
 
     expect(identity.publicKeyBase64Url).toBeTruthy();
     expect(identity.deviceId).toMatch(/^[\da-f]{64}$/u);
-    expect(identity.privateKeyRaw.length).toBeGreaterThan(0);
+    expect(identity.signingKey).toBeDefined();
   });
 
   it("returns consistent identity on subsequent calls", async () => {

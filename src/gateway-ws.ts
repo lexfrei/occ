@@ -1,14 +1,14 @@
 /**
  * OpenClaw Gateway WebSocket client.
  *
- * Connects to the Gateway, performs device auth handshake,
+ * Connects to the Gateway, performs Ed25519 device auth handshake,
  * listens for chat events, and sends replies via chat.send.
  */
 
 import { getDeviceIdentity, signChallenge } from "./device-identity.js";
-import { type InboundMessage, type OccConfig } from "./types.js";
+import { toErrorMessage } from "./errors.js";
+import { type InboundMessage, type OccConfig, VERSION } from "./types.js";
 
-/** WebSocket frame types from Gateway protocol. */
 interface WsRequest {
   readonly type: "req";
   readonly id: string;
@@ -51,6 +51,7 @@ type MessageCallback = (message: InboundMessage) => void;
 
 const MAX_RECONNECT_DELAY_MS = 30_000;
 const INITIAL_RECONNECT_DELAY_MS = 1000;
+const PLATFORM = process.platform === "darwin" ? "macos" : process.platform;
 
 export class GatewayWebSocket {
   private readonly wsUrl: string;
@@ -67,26 +68,29 @@ export class GatewayWebSocket {
   private tickTimer: ReturnType<typeof setInterval> | undefined;
   private authResolve: (() => void) | undefined;
   private authReject: ((error: Error) => void) | undefined;
+  private missedPings = 0;
 
   constructor(config: OccConfig) {
-    const baseUrl = config.openclawUrl.replace(/^http/u, "ws");
-    this.wsUrl = `${baseUrl}/gateway`;
+    let url = config.openclawUrl;
+
+    while (url.endsWith("/")) {
+      url = url.slice(0, -1);
+    }
+
+    this.wsUrl = `${url.replace(/^http/u, "ws")}/gateway`;
     this.token = config.openclawToken;
     this.sessionKeys = new Set(config.sessionKey.split(",").map((key) => key.trim()));
   }
 
-  /** Register callback for inbound user messages. */
   onInboundMessage(callback: MessageCallback): void {
     this.onMessage = callback;
   }
 
-  /** Connect to Gateway and start listening. */
   async start(): Promise<void> {
     this.stopped = false;
     await this.connect();
   }
 
-  /** Disconnect and stop reconnecting. */
   stop(): void {
     this.stopped = true;
     this.clearTickTimer();
@@ -97,13 +101,10 @@ export class GatewayWebSocket {
     }
   }
 
-  /** Send a reply into an OpenClaw session via chat.send. */
   async sendReply(sessionKey: string, text: string): Promise<void> {
-    const requestId = this.nextRequestId();
-
     const request: WsRequest = {
       type: "req",
-      id: requestId,
+      id: this.nextRequestId(),
       method: "chat.send",
       params: {
         sessionKey,
@@ -132,8 +133,7 @@ export class GatewayWebSocket {
       ws.addEventListener("message", (event) => {
         const data = typeof event.data === "string" ? event.data : "";
         this.handleFrame(data, identity).catch((error: unknown) => {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          console.error(`[occ] WS frame error: ${errorMessage}`);
+          console.error(`[occ] WS frame error: ${toErrorMessage(error)}`);
         });
       });
 
@@ -164,8 +164,7 @@ export class GatewayWebSocket {
       console.error(`[occ] WS disconnected, reconnecting in ${String(this.reconnectDelayMs)}ms...`);
       setTimeout(() => {
         this.connect().catch((error: unknown) => {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          console.error(`[occ] WS reconnect error: ${errorMessage}`);
+          console.error(`[occ] WS reconnect error: ${toErrorMessage(error)}`);
         });
       }, this.reconnectDelayMs);
       this.reconnectDelayMs = Math.min(this.reconnectDelayMs * 2, MAX_RECONNECT_DELAY_MS);
@@ -205,8 +204,7 @@ export class GatewayWebSocket {
     frame: WsEvent,
     identity: Awaited<ReturnType<typeof getDeviceIdentity>>,
   ): Promise<void> {
-    const payloadRecord = frame.payload;
-    const nonceValue = payloadRecord?.["nonce"];
+    const nonceValue = frame.payload?.["nonce"];
     const nonce = typeof nonceValue === "string" ? nonceValue : "";
 
     if (!nonce) {
@@ -225,8 +223,8 @@ export class GatewayWebSocket {
         maxProtocol: 3,
         client: {
           id: "occ",
-          version: "0.0.1",
-          platform: process.platform === "darwin" ? "macos" : process.platform,
+          version: VERSION,
+          platform: PLATFORM,
           mode: "backend",
         },
         role: "operator",
@@ -343,11 +341,34 @@ export class GatewayWebSocket {
 
   private startTickTimer(intervalMs: number): void {
     this.clearTickTimer();
+    this.missedPings = 0;
+    const maxMissed = 3;
+
     this.tickTimer = setInterval(() => {
-      if (this.websocket?.readyState === WebSocket.OPEN) {
-        const pingFrame = { type: "req", id: this.nextRequestId(), method: "ping", params: {} };
-        this.websocket.send(JSON.stringify(pingFrame));
+      if (this.websocket?.readyState !== WebSocket.OPEN) {
+        return;
       }
+
+      this.missedPings += 1;
+
+      if (this.missedPings > maxMissed) {
+        console.error("[occ] WS connection appears dead, forcing reconnect");
+        this.websocket.close();
+        return;
+      }
+
+      const pingId = this.nextRequestId();
+
+      this.pendingResponses.set(pingId, () => {
+        this.missedPings = 0;
+      });
+
+      this.websocket.send(JSON.stringify({ type: "req", id: pingId, method: "ping", params: {} }));
+
+      // Clean up stale ping resolver after a tick interval
+      setTimeout(() => {
+        this.pendingResponses.delete(pingId);
+      }, intervalMs);
     }, intervalMs);
   }
 

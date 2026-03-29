@@ -1,13 +1,11 @@
 /**
  * OpenClaw Gateway REST API client.
- *
- * Handles inbound message polling (GET /api/sessions/:key/history)
- * and outbound response delivery (POST /api/sessions/:key/messages).
+ * Polls session history for inbound messages, posts responses for outbound delivery.
  */
 
+import { toErrorMessage } from "./errors.js";
 import { type InboundMessage, type OccConfig } from "./types.js";
 
-/** Raw transcript entry from OpenClaw history API. */
 interface HistoryEntry {
   readonly id?: string;
   readonly role: string;
@@ -16,22 +14,22 @@ interface HistoryEntry {
   readonly meta?: Record<string, string>;
 }
 
-/** Raw response from OpenClaw history API. */
 interface HistoryResponse {
   readonly messages?: readonly HistoryEntry[];
 }
 
 type MessageCallback = (message: InboundMessage) => void;
 
-function makeAuthHeaders(token: string): Headers {
-  return new Headers({ authorization: `Bearer ${token}` });
-}
+const MAX_SEEN_IDS = 10_000;
 
-function makeJsonHeaders(token: string): Headers {
-  return new Headers({
-    authorization: `Bearer ${token}`,
-    "content-type": "application/json",
-  });
+function makeHeaders(token: string, json: boolean): Headers {
+  const headers = new Headers({ authorization: `Bearer ${token}` });
+
+  if (json) {
+    headers.set("content-type", "application/json");
+  }
+
+  return headers;
 }
 
 export class OpenClawClient {
@@ -48,21 +46,21 @@ export class OpenClawClient {
 
   constructor(config: OccConfig) {
     let url = config.openclawUrl;
+
     while (url.endsWith("/")) {
       url = url.slice(0, -1);
     }
+
     this.baseUrl = url;
     this.token = config.openclawToken;
     this.sessionKey = config.sessionKey;
     this.pollIntervalMs = config.pollIntervalMs;
   }
 
-  /** Register callback for inbound user messages. */
   onInboundMessage(callback: MessageCallback): void {
     this.onMessage = callback;
   }
 
-  /** Start polling for new messages. */
   start(): void {
     if (this.pollTimer) {
       return;
@@ -73,19 +71,16 @@ export class OpenClawClient {
     );
 
     this.poll().catch((error: unknown) => {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error(`[occ] initial poll error: ${errorMessage}`);
+      console.error(`[occ] initial poll error: ${toErrorMessage(error)}`);
     });
 
     this.pollTimer = setInterval(() => {
       this.poll().catch((error: unknown) => {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error(`[occ] poll error: ${errorMessage}`);
+        console.error(`[occ] poll error: ${toErrorMessage(error)}`);
       });
     }, this.pollIntervalMs);
   }
 
-  /** Stop polling. */
   stop(): void {
     if (this.pollTimer) {
       clearInterval(this.pollTimer);
@@ -93,13 +88,12 @@ export class OpenClawClient {
     }
   }
 
-  /** Send a response back through OpenClaw for delivery. */
   async sendReply(sessionKey: string, text: string): Promise<void> {
     const url = `${this.baseUrl}/api/sessions/${encodeURIComponent(sessionKey)}/messages`;
 
     const response = await fetch(url, {
       method: "POST",
-      headers: makeJsonHeaders(this.token),
+      headers: makeHeaders(this.token, true),
       body: JSON.stringify({ message: text }),
     });
 
@@ -111,16 +105,12 @@ export class OpenClawClient {
     console.error(`[occ] reply delivered to session ${sessionKey}`);
   }
 
-  /**
-   * Send a reply via webhook for explicit channel delivery.
-   * Uses POST /hooks/agent with deliver=true for targeted routing.
-   */
   async sendReplyViaWebhook(text: string, channel: string, to: string): Promise<void> {
     const url = `${this.baseUrl}/hooks/agent`;
 
     const response = await fetch(url, {
       method: "POST",
-      headers: makeJsonHeaders(this.token),
+      headers: makeHeaders(this.token, true),
       body: JSON.stringify({
         message: text,
         deliver: true,
@@ -146,6 +136,7 @@ export class OpenClawClient {
       for (const entry of userMessages) {
         this.seenIds.add(OpenClawClient.entryKey(entry));
       }
+
       this.initialized = true;
       return;
     }
@@ -158,6 +149,8 @@ export class OpenClawClient {
         this.emitMessage(entry);
       }
     }
+
+    this.evictOldIds();
   }
 
   private static entryKey(entry: HistoryEntry): string {
@@ -172,11 +165,33 @@ export class OpenClawClient {
     return `hash:${entry.content}`;
   }
 
+  /** Prevent unbounded memory growth by capping the seen IDs set. */
+  private evictOldIds(): void {
+    if (this.seenIds.size <= MAX_SEEN_IDS) {
+      return;
+    }
+
+    const excess = this.seenIds.size - MAX_SEEN_IDS;
+    const iterator = this.seenIds.values();
+    let evicted = 0;
+
+    while (evicted < excess) {
+      const next = iterator.next();
+
+      if (next.done) {
+        break;
+      }
+
+      this.seenIds.delete(next.value);
+      evicted += 1;
+    }
+  }
+
   private async fetchHistory(): Promise<readonly HistoryEntry[]> {
     const url = `${this.baseUrl}/api/sessions/${encodeURIComponent(this.sessionKey)}/history`;
 
     const response = await fetch(url, {
-      headers: makeAuthHeaders(this.token),
+      headers: makeHeaders(this.token, false),
     });
 
     if (!response.ok) {

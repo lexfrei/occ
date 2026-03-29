@@ -1,11 +1,18 @@
 /**
  * OCC — OpenClaw-Claude Connector
  *
- * Entry point: loads config, creates bridge, starts MCP channel + OpenClaw polling.
+ * Entry point: loads config, creates bridge, starts MCP channel + OpenClaw transport.
  */
 
 import { Bridge } from "./bridge.js";
 import { loadConfig } from "./config.js";
+import { toErrorMessage } from "./errors.js";
+
+function shutdown(bridge: Bridge, signal: string): void {
+  console.error(`[occ] received ${signal}, shutting down...`);
+  bridge.stop();
+  process.exit(0);
+}
 
 function main(): void {
   console.error("[occ] OpenClaw-Claude Connector starting...");
@@ -18,20 +25,14 @@ function main(): void {
   const bridge = new Bridge(config);
 
   process.on("SIGINT", () => {
-    console.error("[occ] received SIGINT, shutting down...");
-    bridge.stop();
-    process.exit(0);
+    shutdown(bridge, "SIGINT");
   });
-
   process.on("SIGTERM", () => {
-    console.error("[occ] received SIGTERM, shutting down...");
-    bridge.stop();
-    process.exit(0);
+    shutdown(bridge, "SIGTERM");
   });
 
   bridge.start().catch((error: unknown) => {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error(`[occ] fatal: ${errorMessage}`);
+    console.error(`[occ] fatal: ${toErrorMessage(error)}`);
     process.exit(1);
   });
 }

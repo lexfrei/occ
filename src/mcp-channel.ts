@@ -1,18 +1,21 @@
 /**
  * Claude Code Channel MCP server.
  *
- * Declares claude/channel capability, pushes inbound messages
- * as channel notifications, and exposes reply/react tools.
- *
  * Uses McpServer high-level API for tool registration, and accesses
- * the underlying Server for channel notifications (experimental capability).
+ * the underlying Server.notification() for channel events (experimental capability).
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
-import { type InboundMessage, type OutboundReply } from "./types.js";
+import { toErrorMessage } from "./errors.js";
+import {
+  type InboundMessage,
+  type OutboundReply,
+  type PermissionBehavior,
+  VERSION,
+} from "./types.js";
 
 const CHANNEL_INSTRUCTIONS = [
   "You are connected to OpenClaw via the OCC bridge.",
@@ -36,7 +39,7 @@ export class McpChannel {
 
   constructor() {
     this.mcpServer = new McpServer(
-      { name: "occ", version: "0.0.1" },
+      { name: "occ", version: VERSION },
       {
         capabilities: {
           experimental: {
@@ -51,12 +54,10 @@ export class McpChannel {
     this.registerTools();
   }
 
-  /** Set the handler for outbound replies from Claude Code. */
   onReply(handler: ReplyHandler): void {
     this.replyHandler = handler;
   }
 
-  /** Push an inbound message to Claude Code as a channel notification. */
   async pushMessage(message: InboundMessage): Promise<void> {
     await this.mcpServer.server.notification({
       method: "notifications/claude/channel",
@@ -77,38 +78,33 @@ export class McpChannel {
     );
   }
 
-  /** Push a permission prompt to Claude Code's channel. */
   async pushPermissionPrompt(text: string, chatId: string): Promise<void> {
     await this.mcpServer.server.notification({
       method: "notifications/claude/channel",
       params: {
         content: text,
-        meta: {
-          chatId,
-          type: "permissionPrompt",
-        },
+        meta: { chatId, type: "permissionPrompt" },
       },
     });
   }
 
-  /** Send a permission verdict back to Claude Code. */
-  async sendPermissionVerdict(requestId: string, behavior: "allow" | "deny"): Promise<void> {
+  async sendPermissionVerdict(requestId: string, behavior: PermissionBehavior): Promise<void> {
     await this.mcpServer.server.notification({
       method: "notifications/claude/channel/permission",
-      params: {
-        request_id: requestId,
-        behavior,
-      },
+      params: { request_id: requestId, behavior },
     });
 
     console.error(`[occ] permission verdict: ${behavior} for ${requestId}`);
   }
 
-  /** Connect the MCP server to stdio transport. */
   async connect(): Promise<void> {
     const transport = new StdioServerTransport();
     await this.mcpServer.connect(transport);
     console.error("[occ] MCP channel connected via stdio");
+  }
+
+  async close(): Promise<void> {
+    await this.mcpServer.close();
   }
 
   private registerTools(): void {
@@ -133,13 +129,10 @@ export class McpChannel {
 
         try {
           await this.replyHandler({ chatId, text });
-          return {
-            content: [{ type: "text", text: "Message sent" }],
-          };
+          return { content: [{ type: "text", text: "Message sent" }] };
         } catch (error: unknown) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
           return {
-            content: [{ type: "text", text: `Failed to send: ${errorMessage}` }],
+            content: [{ type: "text", text: `Failed to send: ${toErrorMessage(error)}` }],
             isError: true,
           };
         }

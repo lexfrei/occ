@@ -1,7 +1,3 @@
-/**
- * Session mapping: OpenClaw sessions ↔ Claude Code chat IDs.
- */
-
 import { type SessionContext } from "./types.js";
 
 export class SessionMap {
@@ -12,12 +8,10 @@ export class SessionMap {
     this.sessionTtlMs = sessionTtlMs;
   }
 
-  /** Build a deterministic chat ID from platform + sender + session. */
   static buildChatId(platform: string, senderId: string, sessionKey: string): string {
     return `${platform}:${senderId}:${sessionKey}`;
   }
 
-  /** Register or update a session context for a chat ID. */
   upsert(chatId: string, context: Omit<SessionContext, "lastActivityMs" | "messageCount">): void {
     const existing = this.sessions.get(chatId);
 
@@ -33,12 +27,11 @@ export class SessionMap {
     }
   }
 
-  /** Look up session context by chat ID. */
   get(chatId: string): SessionContext | undefined {
     return this.sessions.get(chatId);
   }
 
-  /** Remove stale sessions older than TTL. Returns count of removed entries. */
+  /** Remove sessions older than TTL. Returns count of removed entries. */
   cleanup(): number {
     const now = Date.now();
     let removed = 0;
@@ -53,7 +46,6 @@ export class SessionMap {
     return removed;
   }
 
-  /** Number of active sessions. */
   get size(): number {
     return this.sessions.size;
   }
