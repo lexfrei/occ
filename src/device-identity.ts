@@ -131,7 +131,7 @@ export async function signChallenge(
   const payload = [
     "v3",
     identity.deviceId,
-    "occ",
+    "gateway-client",
     "backend",
     "operator",
     "operator.read,operator.write",

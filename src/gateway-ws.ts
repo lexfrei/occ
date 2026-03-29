@@ -238,7 +238,7 @@ export class GatewayWebSocket {
         minProtocol: 3,
         maxProtocol: 3,
         client: {
-          id: "occ",
+          id: "gateway-client",
           version: VERSION,
           platform: PLATFORM,
           mode: "backend",
