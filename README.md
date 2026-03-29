@@ -148,12 +148,15 @@ src/
   permission-relay.ts   Permission verdict parsing and formatting
   config.ts             Environment variable loader
   types.ts              Shared TypeScript types
+  errors.ts             Shared error message extraction utility
 test/
-  config.test.ts            Config loader tests
-  security.test.ts          Sender gate tests
-  session-map.test.ts       Session mapping tests
-  permission-relay.test.ts  Permission parsing tests
-  device-identity.test.ts   Ed25519 key and signing tests
+  config.test.ts                 Config loader tests
+  security.test.ts               Sender gate tests
+  session-map.test.ts            Session mapping tests
+  permission-relay.test.ts       Permission parsing tests
+  device-identity.test.ts        Ed25519 key and signing tests
+  device-identity-validation.test.ts  Corrupted key file recovery tests
+  bridge.test.ts                 Security: gate-before-verdict ordering
 ```
 
 ## Development
@@ -170,7 +173,7 @@ Linting is intentionally strict: `eslint.configs.all` + `typescript-eslint/stric
 
 ## Limitations
 
-- **Research preview** — Claude Code Channels are in [research preview](https://code.claude.com/docs/en/channels#research-preview). The `--channels` flag syntax and protocol may change.
+- **Research preview** — Claude Code Channels are in [research preview](https://code.claude.com/docs/en/channels#research-preview). The `--dangerously-load-development-channels` flag syntax and protocol may change.
 - **Development channel** — OCC uses `--dangerously-load-development-channels` because it is not on the Anthropic plugin allowlist. This requires confirmation at startup.
 
 ## License

@@ -8,9 +8,9 @@ import { Bridge } from "./bridge.js";
 import { loadConfig } from "./config.js";
 import { toErrorMessage } from "./errors.js";
 
-function shutdown(bridge: Bridge, signal: string): void {
+async function shutdown(bridge: Bridge, signal: string): Promise<void> {
   console.error(`[occ] received ${signal}, shutting down...`);
-  bridge.stop();
+  await bridge.stop();
   process.exit(0);
 }
 
@@ -20,15 +20,28 @@ function main(): void {
   const config = loadConfig();
 
   console.error(`[occ] OpenClaw URL: ${config.openclawUrl}`);
-  console.error(`[occ] Session key: ${config.sessionKey}`);
+  console.error(`[occ] Sessions: ${config.sessionKey}`);
 
   const bridge = new Bridge(config);
+  let shuttingDown = false;
+
+  const handleSignal = (signal: string): void => {
+    if (shuttingDown) {
+      return;
+    }
+
+    shuttingDown = true;
+    shutdown(bridge, signal).catch((error: unknown) => {
+      console.error(`[occ] shutdown error: ${toErrorMessage(error)}`);
+      process.exit(1);
+    });
+  };
 
   process.on("SIGINT", () => {
-    shutdown(bridge, "SIGINT");
+    handleSignal("SIGINT");
   });
   process.on("SIGTERM", () => {
-    shutdown(bridge, "SIGTERM");
+    handleSignal("SIGTERM");
   });
 
   bridge.start().catch((error: unknown) => {

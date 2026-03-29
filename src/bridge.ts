@@ -49,7 +49,7 @@ export class Bridge {
     this.startCleanup();
   }
 
-  stop(): void {
+  async stop(): Promise<void> {
     this.transport.stop();
 
     if (this.cleanupTimer) {
@@ -57,9 +57,21 @@ export class Bridge {
       this.cleanupTimer = undefined;
     }
 
-    this.channel.close().catch((error: unknown) => {
+    const closeTimeoutMs = 5000;
+
+    try {
+      const timer = { id: undefined as ReturnType<typeof setTimeout> | undefined };
+      const timeoutPromise = new Promise<void>((_resolve, reject) => {
+        timer.id = setTimeout(() => {
+          reject(new Error("MCP channel close timed out"));
+        }, closeTimeoutMs);
+      });
+
+      await Promise.race([this.channel.close(), timeoutPromise]);
+      clearTimeout(timer.id);
+    } catch (error: unknown) {
       console.error(`[occ] MCP close error: ${toErrorMessage(error)}`);
-    });
+    }
   }
 
   private createTransport(mode: OccConfig["transport"]): Transport {

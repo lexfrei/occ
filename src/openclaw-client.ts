@@ -105,29 +105,6 @@ export class OpenClawClient {
     console.error(`[occ] reply delivered to session ${sessionKey}`);
   }
 
-  async sendReplyViaWebhook(text: string, channel: string, to: string): Promise<void> {
-    const url = `${this.baseUrl}/hooks/agent`;
-
-    const response = await fetch(url, {
-      method: "POST",
-      headers: makeHeaders(this.token, true),
-      body: JSON.stringify({
-        message: text,
-        deliver: true,
-        channel,
-        to,
-        sessionKey: `occ:bridge:${channel}`,
-      }),
-    });
-
-    if (!response.ok) {
-      const body = await response.text();
-      throw new Error(`OpenClaw webhook ${url} failed: ${String(response.status)} ${body}`);
-    }
-
-    console.error(`[occ] webhook reply delivered to ${channel}:${to}`);
-  }
-
   private async poll(): Promise<void> {
     const entries = await this.fetchHistory();
     const userMessages = entries.filter((entry) => entry.role === "user");
@@ -153,16 +130,21 @@ export class OpenClawClient {
     this.evictOldIds();
   }
 
+  private static readonly maxKeyContentLength = 256;
+
+  /** Deterministic key for deduplication. Must produce the same key for the same entry across polls. */
   private static entryKey(entry: HistoryEntry): string {
     if (entry.id) {
       return entry.id;
     }
 
+    const truncatedContent = entry.content.slice(0, OpenClawClient.maxKeyContentLength);
+
     if (entry.timestamp) {
-      return `${entry.timestamp}:${entry.content.slice(0, 64)}`;
+      return `ts:${entry.timestamp}:${truncatedContent}`;
     }
 
-    return `hash:${entry.content}`;
+    return `content:${truncatedContent}`;
   }
 
   /** Prevent unbounded memory growth by capping the seen IDs set. */
