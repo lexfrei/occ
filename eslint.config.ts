@@ -101,7 +101,7 @@ export default tseslint.config(
           format: null,
           filter: {
             regex:
-              "^(authorization|content-type|cache-control|owned_by|finish_reason|prompt_tokens|completion_tokens|total_tokens|max_tokens|Authorization|Content-Type|claude/channel|request_id|newlines-between|prefer-inline)",
+              "^(authorization|content-type|cache-control|owned_by|finish_reason|prompt_tokens|completion_tokens|total_tokens|max_tokens|max_output_tokens|context_window|x-openclaw-|Authorization|Content-Type|claude/channel|request_id|newlines-between|prefer-inline)",
             match: true,
           },
         },

@@ -2,18 +2,20 @@
  * OpenAI-compatible HTTP server.
  *
  * Exposes POST /v1/chat/completions that OpenClaw calls as a model provider.
- * Routes messages to Claude Code via the MCP channel and returns
- * responses as SSE streaming or JSON.
+ * Extracts context and routes to the completion handler (bridge → Claude Code).
  */
 
+import { type RequestContext, extractContext } from "./context.js";
 import { toErrorMessage } from "./errors.js";
 import { type ChatCompletionRequest, type OccConfig } from "./types.js";
 import { VERSION } from "./version.js";
 
-type CompletionHandler = (
-  userMessage: string,
-  allMessages: ChatCompletionRequest["messages"],
-) => Promise<string>;
+/** Claude Code context window (as of March 2026). */
+const CLAUDE_CONTEXT_WINDOW = 200_000;
+/** Claude Code max output tokens (as of March 2026). */
+const CLAUDE_MAX_OUTPUT_TOKENS = 16_384;
+
+type CompletionHandler = (context: RequestContext) => Promise<string>;
 
 export class HttpServer {
   private readonly port: number;
@@ -54,29 +56,11 @@ export class HttpServer {
       return this.handleChatCompletion(request);
     }
 
-    if (url.pathname === "/health" || url.pathname === "/healthz") {
+    if ((url.pathname === "/health" || url.pathname === "/healthz") && request.method === "GET") {
       return Response.json({ ok: true, version: VERSION });
     }
 
     return new Response("Not Found", { status: 404 });
-  }
-
-  /** Extract text from OpenAI content (string or array of blocks). */
-  private static extractText(
-    content: ChatCompletionRequest["messages"][number]["content"] | undefined,
-  ): string {
-    if (typeof content === "string") {
-      return content;
-    }
-
-    if (Array.isArray(content)) {
-      return (content as readonly { type: string; text?: string }[])
-        .filter((block) => block.type === "text" && block.text)
-        .map((block) => block.text ?? "")
-        .join("\n");
-    }
-
-    return "";
   }
 
   private static handleListModels(): Response {
@@ -88,6 +72,8 @@ export class HttpServer {
           object: "model",
           created: 0,
           owned_by: "occ",
+          context_window: CLAUDE_CONTEXT_WINDOW,
+          max_output_tokens: CLAUDE_MAX_OUTPUT_TOKENS,
         },
       ],
     });
@@ -111,12 +97,20 @@ export class HttpServer {
       );
     }
 
-    const body = (await request.json()) as ChatCompletionRequest;
-    const userMessages = body.messages.filter((message) => message.role === "user");
-    const lastContent = userMessages.at(-1)?.content;
-    const lastUserMessage = HttpServer.extractText(lastContent);
+    const parseResult = await HttpServer.parseRequestBody(request);
 
-    if (lastUserMessage.length === 0) {
+    if (!parseResult.ok) {
+      return Response.json(
+        { error: { message: "Invalid JSON in request body", type: "invalid_request_error" } },
+        { status: 400 },
+      );
+    }
+
+    const { body } = parseResult;
+
+    const context = extractContext(body, request.headers);
+
+    if (context.userMessage.length === 0) {
       return Response.json(
         { error: { message: "No user message found", type: "invalid_request_error" } },
         { status: 400 },
@@ -124,7 +118,7 @@ export class HttpServer {
     }
 
     try {
-      const responseText = await this.completionHandler(lastUserMessage, body.messages);
+      const responseText = await this.completionHandler(context);
       const completionId = `chatcmpl-occ-${crypto.randomUUID().slice(0, 8)}`;
       const timestamp = Math.floor(Date.now() / 1000);
 
@@ -152,6 +146,30 @@ export class HttpServer {
         { error: { message: toErrorMessage(error), type: "server_error" } },
         { status: 500 },
       );
+    }
+  }
+
+  private static async parseRequestBody(
+    request: Request,
+  ): Promise<{ ok: true; body: ChatCompletionRequest } | { ok: false }> {
+    try {
+      const raw: unknown = await request.json();
+
+      if (
+        typeof raw !== "object" ||
+        raw === null ||
+        !("messages" in raw) ||
+        !Array.isArray((raw as Record<string, unknown>)["messages"]) ||
+        !((raw as Record<string, unknown[]>)["messages"] ?? []).every(
+          (message) => typeof message === "object" && message !== null && "role" in message,
+        )
+      ) {
+        return { ok: false };
+      }
+
+      return { ok: true, body: raw as ChatCompletionRequest };
+    } catch {
+      return { ok: false };
     }
   }
 

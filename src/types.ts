@@ -25,4 +25,10 @@ export interface OccConfig {
   readonly port: number;
   /** Bearer token clients must send (OpenClaw's apiKey for this provider). */
   readonly apiToken: string;
+  /** OpenClaw Gateway URL for proactive messaging. */
+  readonly openclawUrl: string;
+  /** OpenClaw Gateway token for proactive messaging. Undefined = proactive disabled. */
+  readonly openclawToken: string | undefined;
+  /** Timeout for Claude Code to reply (ms). */
+  readonly replyTimeoutMs: number;
 }

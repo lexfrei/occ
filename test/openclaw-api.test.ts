@@ -1,0 +1,80 @@
+import { afterAll, beforeAll, describe, expect, it } from "bun:test";
+
+import { OpenClawApi } from "../src/openclaw-api.js";
+
+describe("OpenClawApi", () => {
+  const port = 19_877;
+  let lastRequest: {
+    method: string;
+    url: string;
+    headers: Record<string, string>;
+    body: string;
+  } | null = null;
+
+  let mockServer: ReturnType<typeof Bun.serve> | null = null;
+
+  beforeAll(() => {
+    mockServer = Bun.serve({
+      port,
+      async fetch(request) {
+        lastRequest = {
+          method: request.method,
+          url: request.url,
+          headers: Object.fromEntries(request.headers.entries()),
+          body: await request.text(),
+        };
+
+        const { body } = lastRequest;
+        if (body.includes("trigger-error")) {
+          return new Response("Internal Server Error", { status: 500 });
+        }
+
+        return Response.json({ ok: true });
+      },
+    });
+  });
+
+  afterAll(async () => {
+    await mockServer?.stop();
+  });
+
+  it("sends message via /hooks/agent with auth header", async () => {
+    const api = new OpenClawApi(`http://127.0.0.1:${String(port)}`, "test-gw-token");
+
+    await api.sendMessage("telegram", "12345", "Hello from OCC");
+
+    expect(lastRequest?.method).toBe("POST");
+    expect(lastRequest?.url).toContain("/hooks/agent");
+    expect(lastRequest?.headers["authorization"]).toBe("Bearer test-gw-token");
+
+    const body = JSON.parse(lastRequest?.body ?? "{}") as Record<string, unknown>;
+
+    expect(body["deliver"]).toBe(true);
+    expect(body["channel"]).toBe("telegram");
+    expect(body["to"]).toBe("12345");
+    expect(body["message"]).toBe("Hello from OCC");
+  });
+
+  it("throws on non-200 API response", async () => {
+    const api = new OpenClawApi(`http://127.0.0.1:${String(port)}`, "token");
+
+    try {
+      await api.sendMessage("telegram", "123", "trigger-error");
+      expect.unreachable("should have thrown");
+    } catch (error: unknown) {
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toContain("OpenClaw POST failed: 500");
+    }
+  });
+
+  it("throws on connection error", async () => {
+    const api = new OpenClawApi("http://127.0.0.1:1", "token");
+
+    try {
+      await api.sendMessage("telegram", "123", "fail");
+      expect.unreachable("should have thrown");
+    } catch (error: unknown) {
+      expect(error).toBeInstanceOf(Error);
+    }
+  });
+});

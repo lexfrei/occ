@@ -9,22 +9,29 @@ OCC is an [OpenAI-compatible model provider](https://docs.openclaw.ai/concepts/m
 ## How it works
 
 ```text
-You on Telegram / WhatsApp / Discord / Signal / Slack / ...
-    ↕  (native platform integrations)
-OpenClaw Gateway
-    ↕  POST /v1/chat/completions (OpenAI-compatible HTTP)
-OCC (Bun HTTP server + Claude Code Channel)
-    ↕  MCP stdio (JSON-RPC 2.0)
-Your Claude Code session
-    (project files, git, MCP tools — full local context)
+INCOMING (user → Claude Code):
+  Telegram / WhatsApp / Discord / ...
+      ↕ (native platform integrations)
+  OpenClaw Gateway
+      ↕ POST /v1/chat/completions (OpenAI-compatible HTTP)
+  OCC (Bun HTTP server + Claude Code Channel)
+      ↕ MCP stdio (JSON-RPC 2.0)
+  Your Claude Code session (project files, git, MCP tools)
+
+OUTGOING (Claude Code → user, synchronous reply):
+  Claude Code → reply tool → OCC HTTP response → OpenClaw → messenger
+
+PROACTIVE (Claude Code → user, anytime):
+  Claude Code → notify tool → OCC → POST /hooks/agent → OpenClaw → messenger
+
+SCHEDULED (OpenClaw triggers Claude Code):
+  OpenClaw cron/heartbeat → POST /v1/chat/completions → OCC → Claude Code
 ```
 
 OCC is a single process with two interfaces:
 
 - **HTTP server** — OpenClaw calls `POST /v1/chat/completions` as if OCC were any LLM provider
 - **MCP Channel** — Claude Code spawns OCC as a subprocess and communicates via stdio
-
-When a request arrives, OCC pushes the user message into the Claude Code session as a `<channel>` notification. Claude processes it with full context and calls the `reply` tool. OCC returns the reply as an OpenAI-format HTTP response back to OpenClaw, which delivers it to the messenger.
 
 ## Requirements
 
@@ -44,13 +51,13 @@ bun install
 
 **2. Start OpenClaw with OCC as model provider**
 
-Option A — use the setup script (Docker):
+Option A — automated Docker setup:
 
 ```bash
 ./scripts/setup-openclaw.sh
 ```
 
-Option B — configure manually in `~/.openclaw/openclaw.json`:
+Option B — manual config in `~/.openclaw/openclaw.json`:
 
 ```json
 {
@@ -71,13 +78,7 @@ Option B — configure manually in `~/.openclaw/openclaw.json`:
       }
     }
   },
-  "agents": {
-    "defaults": {
-      "model": {
-        "primary": "occ/claude-code"
-      }
-    }
-  }
+  "agents": { "defaults": { "model": { "primary": "occ/claude-code" } } }
 }
 ```
 
@@ -87,9 +88,35 @@ Option B — configure manually in `~/.openclaw/openclaw.json`:
 claude --dangerously-load-development-channels server:occ --permission-mode acceptEdits
 ```
 
-Claude Code spawns OCC, which starts the HTTP server on port 3456. OpenClaw sends messages there, Claude Code processes them, replies go back to the messenger.
-
 **4. Send a message from any OpenClaw-connected messenger**
+
+## MCP tools
+
+Claude Code gets three tools through the OCC channel:
+
+| Tool        | Parameters                  | Description                                                                                        |
+| ----------- | --------------------------- | -------------------------------------------------------------------------------------------------- |
+| `reply`     | `text`                      | Respond to the current message (synchronous, delivered as HTTP response)                           |
+| `notify`    | `channel`, `to`, `text`     | Send a proactive message to any channel/user (works anytime)                                       |
+| `send_file` | `channel`, `to`, `filePath` | Read a local file and send its content to a channel/user (text, max 1MB, truncated to ~4000 chars) |
+
+`reply` works during an active request. `notify` and `send_file` work anytime — they call the OpenClaw REST API directly and require `OPENCLAW_GATEWAY_TOKEN`.
+
+## Scheduling
+
+OpenClaw's cron and heartbeat systems natively trigger the model provider. No OCC code changes needed.
+
+**Cron** (exact schedule):
+
+```bash
+docker compose --profile cli run --rm openclaw-cli cron add \
+  --schedule "*/10 * * * *" \
+  --message "Check deploy status and notify me if anything failed"
+```
+
+**Heartbeat** (periodic check-ins): configure in your OpenClaw workspace's `HEARTBEAT.md`.
+
+Both trigger `POST /v1/chat/completions` to OCC → Claude Code processes → reply delivered.
 
 ## Headless operation
 
@@ -99,7 +126,7 @@ For unattended use (tmux, remote VM, daemon), Claude Code needs auto-approved pe
 ./scripts/setup-openclaw.sh  # installs hooks automatically
 ```
 
-Or manually copy hooks and settings:
+Or manually:
 
 ```bash
 mkdir -p .claude/hooks
@@ -111,7 +138,7 @@ Then add to `.claude/settings.local.json`:
 ```json
 {
   "permissions": {
-    "allow": ["Bash", "Edit", "Write", "Read", "mcp__occ__reply"],
+    "allow": ["Bash", "Edit", "Write", "Read", "WebFetch", "Agent", "mcp__occ__*"],
     "defaultMode": "acceptEdits"
   },
   "hooks": {
@@ -131,36 +158,38 @@ Then add to `.claude/settings.local.json`:
 }
 ```
 
-This gives Claude Code full autonomy — `PreToolUse` hook auto-approves all tool calls, `PermissionRequest` hook bypasses `.claude/` directory protection for skill and agent creation.
-
 > **Run in an isolated environment.** Auto-approve hooks grant Claude Code unrestricted access to the filesystem, shell, and network. There are no guardrails — Claude Code can read, write, and execute anything. Always run OCC inside a dedicated VM or container (Colima, Docker, devcontainer), never on a host machine with access to sensitive data, credentials, or production infrastructure. You are solely responsible for any actions Claude Code takes.
 
 ## Configuration
 
-| Variable        | Default            | Description                                                          |
-| --------------- | ------------------ | -------------------------------------------------------------------- |
-| `OCC_PORT`      | `3456`             | HTTP server port                                                     |
-| `OCC_API_TOKEN` | `occ-bridge-token` | Bearer token OpenClaw sends (must match `apiKey` in provider config) |
+| Variable                 | Default                  | Description                                                               |
+| ------------------------ | ------------------------ | ------------------------------------------------------------------------- |
+| `OCC_PORT`               | `3456`                   | HTTP server port                                                          |
+| `OCC_API_TOKEN`          | `occ-bridge-token`       | Bearer token OpenClaw sends (match `apiKey` in provider config)           |
+| `OPENCLAW_GATEWAY_TOKEN` | —                        | OpenClaw gateway token (enables proactive messaging via notify/send_file) |
+| `OPENCLAW_GATEWAY_URL`   | `http://127.0.0.1:18789` | OpenClaw gateway URL                                                      |
+| `OCC_REPLY_TIMEOUT_MS`   | `120000`                 | Timeout for Claude Code to reply (ms)                                     |
 
 ## OpenAI-compatible API
 
-OCC implements the subset of the OpenAI API that OpenClaw needs:
-
-| Endpoint               | Method | Description                                   |
-| ---------------------- | ------ | --------------------------------------------- |
-| `/v1/chat/completions` | POST   | Chat completion (streaming and non-streaming) |
-| `/v1/models`           | GET    | List available models                         |
-| `/health`              | GET    | Health check                                  |
+| Endpoint               | Method | Description                                      |
+| ---------------------- | ------ | ------------------------------------------------ |
+| `/v1/chat/completions` | POST   | Chat completion (streaming and non-streaming)    |
+| `/v1/models`           | GET    | List available models (with context window info) |
+| `/health`, `/healthz`  | GET    | Health check                                     |
 
 ## Project structure
 
 ```text
 src/
   index.ts          Entry point
-  bridge.ts         Wires HTTP server to MCP channel
+  bridge.ts         Wires HTTP server, MCP channel, and OpenClaw API
   http-server.ts    OpenAI-compatible HTTP server (Bun.serve)
-  mcp-channel.ts    Claude Code Channel (MCP stdio)
+  mcp-channel.ts    Claude Code Channel (MCP stdio) with reply/notify/send_file tools
+  openclaw-api.ts   OpenClaw REST API client for proactive messaging
+  context.ts        Request context extraction and formatting
   config.ts         Environment variable loader
+  file-validator.ts  File validation for send_file tool
   errors.ts         Shared error utility
   types.ts          Shared types
   version.ts        Version from package.json
@@ -168,8 +197,11 @@ hooks/
   auto-approve.sh              PreToolUse hook (auto-approve all tools)
   auto-approve-permission.sh   PermissionRequest hook (bypass .claude/ protection)
 test/
-  config.test.ts       Config loader tests
-  http-server.test.ts  HTTP server tests (auth, streaming, errors)
+  config.test.ts       Config tests
+  http-server.test.ts  HTTP server tests
+  context.test.ts      Context extraction tests
+  openclaw-api.test.ts OpenClaw API client tests
+  send-file.test.ts    File validation and path traversal tests
 ```
 
 ## Development
@@ -184,7 +216,9 @@ bun run test         # bun test
 ## Limitations
 
 - **Research preview** — Claude Code Channels are in [research preview](https://code.claude.com/docs/en/channels#research-preview). The `--dangerously-load-development-channels` flag and protocol may change.
-- **Sequential requests** — OCC handles one request at a time. If OpenClaw sends a second message while Claude Code is still processing the first, it waits (up to 2 minutes).
+- **Sequential requests** — OCC handles one request at a time. A second message waits for the timeout (`OCC_REPLY_TIMEOUT_MS`, default 2 minutes).
+- **No tool calling from OpenClaw** — custom model providers don't receive tool definitions from OpenClaw. Claude Code uses its own tools via MCP, not OpenClaw's.
+- **System prompt not forwarded** — OpenClaw's system prompt (skills, memory, SOUL.md) is not forwarded to Claude Code. Claude Code uses its own project context. Up to 3 preceding conversation messages (before the current user message, excluding system) are included for context.
 
 ## License
 
