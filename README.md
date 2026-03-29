@@ -71,9 +71,15 @@ export OCC_ALLOWED_SENDERS="your-telegram-id,your-discord-id"
 
 Find your platform IDs through OpenClaw's channel settings. Each platform uses its own ID format (Telegram numeric ID, Discord snowflake, etc.).
 
-**4. Disable OpenClaw's built-in agent** (prevents double responses)
+**4. Start OpenClaw with passthrough agent** (automated setup)
 
-In `~/.openclaw/openclaw.json`:
+```bash
+./scripts/setup-openclaw.sh
+```
+
+This generates a gateway token, creates a passthrough agent config (model: none), and starts OpenClaw in Docker. The token is saved to `.env` and `openclaw-data/.token`.
+
+Or if you already have OpenClaw running, disable its built-in agent in `~/.openclaw/openclaw.json`:
 
 ```json
 {
@@ -88,6 +94,7 @@ Without this, both OpenClaw's Pi agent and Claude Code will respond to every mes
 **5. Start Claude Code with OCC**
 
 ```bash
+export OPENCLAW_GATEWAY_TOKEN="$(cat openclaw-data/.token)"
 claude --dangerously-load-development-channels server:occ
 ```
 

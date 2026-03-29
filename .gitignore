@@ -37,3 +37,7 @@ bun.lockb
 
 # Channel data
 .occ-data/
+
+# OpenClaw local data (created by scripts/setup-openclaw.sh)
+openclaw-data/
+openclaw-workspace/
