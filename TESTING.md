@@ -144,7 +144,7 @@ Status: `[ ]` not tested, `[x]` passed, `[!]` failed, `[-]` not applicable, `[~]
 
 | #     | Scenario                      | Steps                                     | Expected                                                           | Status |
 | ----- | ----------------------------- | ----------------------------------------- | ------------------------------------------------------------------ | ------ |
-| 3.2.1 | Send text file                | "Send the contents of package.json to me" | File content arrives as text message                               | `[x]`  |
+| 3.2.1 | Send text file                | "Send the contents of package.json to me" | File content arrives as text message                               | `[~]`  |
 | 3.2.2 | Send large file (>4000 chars) | File with 10k chars                       | Truncated, with "[truncated, showing first 4000 of N chars]" note  | `[x]`  |
 | 3.2.3 | Send file >1MB                | Create 2MB file, try to send              | Error: "File too large"                                            | `[x]`  |
 | 3.2.4 | Send binary file              | Try to send an image or binary            | Error: "Binary files are not supported"                            | `[x]`  |
