@@ -23,18 +23,25 @@ function main(): void {
   console.error(`[occ] Sessions: ${config.sessionKey}`);
 
   const bridge = new Bridge(config);
+  let shuttingDown = false;
+
+  const handleSignal = (signal: string): void => {
+    if (shuttingDown) {
+      return;
+    }
+
+    shuttingDown = true;
+    shutdown(bridge, signal).catch((error: unknown) => {
+      console.error(`[occ] shutdown error: ${toErrorMessage(error)}`);
+      process.exit(1);
+    });
+  };
 
   process.on("SIGINT", () => {
-    shutdown(bridge, "SIGINT").catch((error: unknown) => {
-      console.error(`[occ] shutdown error: ${toErrorMessage(error)}`);
-      process.exit(1);
-    });
+    handleSignal("SIGINT");
   });
   process.on("SIGTERM", () => {
-    shutdown(bridge, "SIGTERM").catch((error: unknown) => {
-      console.error(`[occ] shutdown error: ${toErrorMessage(error)}`);
-      process.exit(1);
-    });
+    handleSignal("SIGTERM");
   });
 
   bridge.start().catch((error: unknown) => {

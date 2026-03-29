@@ -130,17 +130,21 @@ export class OpenClawClient {
     this.evictOldIds();
   }
 
+  private static readonly maxKeyContentLength = 256;
+
   /** Deterministic key for deduplication. Must produce the same key for the same entry across polls. */
   private static entryKey(entry: HistoryEntry): string {
     if (entry.id) {
       return entry.id;
     }
 
+    const truncatedContent = entry.content.slice(0, OpenClawClient.maxKeyContentLength);
+
     if (entry.timestamp) {
-      return `ts:${entry.timestamp}:${entry.content}`;
+      return `ts:${entry.timestamp}:${truncatedContent}`;
     }
 
-    return `content:${entry.content}`;
+    return `content:${truncatedContent}`;
   }
 
   /** Prevent unbounded memory growth by capping the seen IDs set. */

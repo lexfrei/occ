@@ -60,14 +60,15 @@ export class Bridge {
     const closeTimeoutMs = 5000;
 
     try {
-      await Promise.race([
-        this.channel.close(),
-        new Promise<void>((_resolve, reject) => {
-          setTimeout(() => {
-            reject(new Error("MCP channel close timed out"));
-          }, closeTimeoutMs);
-        }),
-      ]);
+      const timer = { id: undefined as ReturnType<typeof setTimeout> | undefined };
+      const timeoutPromise = new Promise<void>((_resolve, reject) => {
+        timer.id = setTimeout(() => {
+          reject(new Error("MCP channel close timed out"));
+        }, closeTimeoutMs);
+      });
+
+      await Promise.race([this.channel.close(), timeoutPromise]);
+      clearTimeout(timer.id);
     } catch (error: unknown) {
       console.error(`[occ] MCP close error: ${toErrorMessage(error)}`);
     }

@@ -192,7 +192,8 @@ export class GatewayWebSocket {
 
     const { type } = parsed as { type: unknown };
 
-    if (type !== "event" && type !== "res" && type !== "req") {
+    if (type !== "event" && type !== "res") {
+      console.error(`[occ] WS received unhandled frame type: ${String(type)}`);
       return;
     }
 
