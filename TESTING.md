@@ -135,7 +135,7 @@ Status: `[ ]` not tested, `[x]` passed, `[!]` failed, `[-]` not applicable, `[~]
 
 | #     | Scenario                              | Steps                                              | Expected                                    | Status |
 | ----- | ------------------------------------- | -------------------------------------------------- | ------------------------------------------- | ------ |
-| 3.1.1 | Proactive message to Telegram         | Claude uses `notify(telegram, <chatId>, "Alert!")` | Message arrives in Telegram chat            | `[x]`  |
+| 3.1.1 | Proactive message to Telegram         | Claude uses `notify(telegram, <chatId>, "Alert!")` | Message arrives in Telegram chat            | `[!]`  |
 | 3.1.2 | notify without OPENCLAW_GATEWAY_TOKEN | Unset token, try notify                            | Error: "Proactive messaging not configured" | `[x]`  |
 | 3.1.3 | notify to invalid channel             | `notify("nonexistent", "123", "test")`             | Error from OpenClaw API, surfaced to Claude | `[-]`  |
 | 3.1.4 | notify to invalid recipient           | `notify("telegram", "000", "test")`                | Error or silent failure from Telegram API   | `[-]`  |
@@ -144,7 +144,7 @@ Status: `[ ]` not tested, `[x]` passed, `[!]` failed, `[-]` not applicable, `[~]
 
 | #     | Scenario                      | Steps                                     | Expected                                                           | Status |
 | ----- | ----------------------------- | ----------------------------------------- | ------------------------------------------------------------------ | ------ |
-| 3.2.1 | Send text file                | "Send the contents of package.json to me" | File content arrives as text message                               | `[x]`  |
+| 3.2.1 | Send text file                | "Send the contents of package.json to me" | File content arrives as text message                               | `[!]`  |
 | 3.2.2 | Send large file (>4000 chars) | File with 10k chars                       | Truncated, with "[truncated, showing first 4000 of N chars]" note  | `[x]`  |
 | 3.2.3 | Send file >1MB                | Create 2MB file, try to send              | Error: "File too large"                                            | `[x]`  |
 | 3.2.4 | Send binary file              | Try to send an image or binary            | Error: "Binary files are not supported"                            | `[x]`  |
@@ -184,7 +184,7 @@ Status: `[ ]` not tested, `[x]` passed, `[!]` failed, `[-]` not applicable, `[~]
 | #     | Scenario          | Steps                    | Expected                                                                           | Status |
 | ----- | ----------------- | ------------------------ | ---------------------------------------------------------------------------------- | ------ |
 | 5.1.1 | Photo             | Send a photo to bot      | Behavior documented: image blocks filtered, text description may or may not arrive | `[-]`  |
-| 5.1.2 | Document (text)   | Send a .txt file         | Content extracted and forwarded to Claude                                          | `[-]`  |
+| 5.1.2 | Document (text)   | Send a .txt file         | Content extracted and forwarded to Claude                                          | `[x]`  |
 | 5.1.3 | Document (PDF)    | Send a PDF               | Behavior depends on OpenClaw PDF handling                                          | `[-]`  |
 | 5.1.4 | Voice note        | Send a voice message     | NOT transcribed (known OpenClaw limitation). Placeholder text arrives              | `[-]`  |
 | 5.1.5 | Sticker           | Send a sticker           | Static: vision-analyzed description. Animated: skipped                             | `[-]`  |
@@ -364,9 +364,9 @@ Status: `[ ]` not tested, `[x]` passed, `[!]` failed, `[-]` not applicable, `[~]
 
 | #      | Scenario                      | Steps                      | Expected                                            | Status |
 | ------ | ----------------------------- | -------------------------- | --------------------------------------------------- | ------ |
-| 11.3.1 | notify returns message ID     | Claude uses notify tool    | Tool reports "Sent to telegram:123 (id: <id>)"      | `[x]`  |
+| 11.3.1 | notify returns message ID     | Claude uses notify tool    | Tool reports "Sent to telegram:123 (id: <id>)"      | `[!]`  |
 | 11.3.2 | notify without ID in response | OpenClaw returns no ID     | Tool reports "Sent to telegram:123"                 | `[x]`  |
-| 11.3.3 | send_file returns message ID  | Claude uses send_file tool | Tool reports "File sent to telegram:123 (id: <id>)" | `[x]`  |
+| 11.3.3 | send_file returns message ID  | Claude uses send_file tool | Tool reports "File sent to telegram:123 (id: <id>)" | `[!]`  |
 
 ### 11.4 File code fences (P2)
 
