@@ -42,10 +42,20 @@ export class McpChannel {
 
   /** Push a user message into the Claude Code session. */
   async pushMessage(content: string): Promise<void> {
-    await this.mcpServer.server.notification({
-      method: "notifications/claude/channel",
-      params: { content },
-    });
+    console.error(`[occ] pushing notification: ${content.slice(0, 80)}`);
+
+    try {
+      await this.mcpServer.server.notification({
+        method: "notifications/claude/channel",
+        params: { content },
+      });
+      console.error("[occ] notification sent (promise resolved)");
+    } catch (error: unknown) {
+      console.error(
+        `[occ] notification FAILED: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      throw error;
+    }
   }
 
   /**

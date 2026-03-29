@@ -1,7 +1,13 @@
-/** OpenAI chat completion message. */
+/** OpenAI content block (multimodal format). */
+interface ContentBlock {
+  readonly type: string;
+  readonly text?: string;
+}
+
+/** OpenAI chat completion message. Content can be string or array of blocks. */
 export interface ChatMessage {
   readonly role: "system" | "user" | "assistant";
-  readonly content: string;
+  readonly content: string | readonly ContentBlock[];
 }
 
 /** OpenAI chat completion request body. */

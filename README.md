@@ -84,12 +84,54 @@ Option B — configure manually in `~/.openclaw/openclaw.json`:
 **3. Start Claude Code with OCC channel**
 
 ```bash
-claude --dangerously-load-development-channels server:occ
+claude --dangerously-load-development-channels server:occ --permission-mode acceptEdits
 ```
 
 Claude Code spawns OCC, which starts the HTTP server on port 3456. OpenClaw sends messages there, Claude Code processes them, replies go back to the messenger.
 
 **4. Send a message from any OpenClaw-connected messenger**
+
+## Headless operation
+
+For unattended use (tmux, remote VM, daemon), Claude Code needs auto-approved permissions. OCC ships with hooks that bypass all permission prompts:
+
+```bash
+./scripts/setup-openclaw.sh  # installs hooks automatically
+```
+
+Or manually copy hooks and settings:
+
+```bash
+mkdir -p .claude/hooks
+cp hooks/auto-approve.sh hooks/auto-approve-permission.sh .claude/hooks/
+```
+
+Then add to `.claude/settings.local.json`:
+
+```json
+{
+  "permissions": {
+    "allow": ["Bash", "Edit", "Write", "Read", "mcp__occ__reply"],
+    "defaultMode": "acceptEdits"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [{ "type": "command", "command": ".claude/hooks/auto-approve.sh" }]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": "*",
+        "hooks": [{ "type": "command", "command": ".claude/hooks/auto-approve-permission.sh" }]
+      }
+    ]
+  }
+}
+```
+
+This gives Claude Code full autonomy — `PreToolUse` hook auto-approves all tool calls, `PermissionRequest` hook bypasses `.claude/` directory protection for skill and agent creation.
 
 ## Configuration
 
@@ -120,6 +162,9 @@ src/
   errors.ts         Shared error utility
   types.ts          Shared types
   version.ts        Version from package.json
+hooks/
+  auto-approve.sh              PreToolUse hook (auto-approve all tools)
+  auto-approve-permission.sh   PermissionRequest hook (bypass .claude/ protection)
 test/
   config.test.ts       Config loader tests
   http-server.test.ts  HTTP server tests (auth, streaming, errors)

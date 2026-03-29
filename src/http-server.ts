@@ -61,6 +61,24 @@ export class HttpServer {
     return new Response("Not Found", { status: 404 });
   }
 
+  /** Extract text from OpenAI content (string or array of blocks). */
+  private static extractText(
+    content: ChatCompletionRequest["messages"][number]["content"] | undefined,
+  ): string {
+    if (typeof content === "string") {
+      return content;
+    }
+
+    if (Array.isArray(content)) {
+      return (content as readonly { type: string; text?: string }[])
+        .filter((block) => block.type === "text" && block.text)
+        .map((block) => block.text ?? "")
+        .join("\n");
+    }
+
+    return "";
+  }
+
   private static handleListModels(): Response {
     return Response.json({
       object: "list",
@@ -95,7 +113,8 @@ export class HttpServer {
 
     const body = (await request.json()) as ChatCompletionRequest;
     const userMessages = body.messages.filter((message) => message.role === "user");
-    const lastUserMessage = userMessages.at(-1)?.content ?? "";
+    const lastContent = userMessages.at(-1)?.content;
+    const lastUserMessage = HttpServer.extractText(lastContent);
 
     if (lastUserMessage.length === 0) {
       return Response.json(
