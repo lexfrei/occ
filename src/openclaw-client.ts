@@ -130,22 +130,17 @@ export class OpenClawClient {
     this.evictOldIds();
   }
 
-  private static entryKeyCounter = 0;
-
+  /** Deterministic key for deduplication. Must produce the same key for the same entry across polls. */
   private static entryKey(entry: HistoryEntry): string {
     if (entry.id) {
       return entry.id;
     }
 
-    // Use a counter suffix to prevent collision when content or timestamps match
-    OpenClawClient.entryKeyCounter += 1;
-    const suffix = String(OpenClawClient.entryKeyCounter);
-
     if (entry.timestamp) {
-      return `${entry.timestamp}:${suffix}`;
+      return `ts:${entry.timestamp}:${entry.content}`;
     }
 
-    return `noid:${suffix}:${entry.content.slice(0, 32)}`;
+    return `content:${entry.content}`;
   }
 
   /** Prevent unbounded memory growth by capping the seen IDs set. */

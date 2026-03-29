@@ -15,6 +15,7 @@ describe("loadConfig", () => {
     delete process.env["OCC_ALLOWED_SENDERS"];
     delete process.env["OCC_POLL_INTERVAL_MS"];
     delete process.env["OCC_SESSION_TTL_MS"];
+    delete process.env["OCC_TRANSPORT"];
   });
 
   afterEach(() => {

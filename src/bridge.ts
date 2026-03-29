@@ -57,8 +57,17 @@ export class Bridge {
       this.cleanupTimer = undefined;
     }
 
+    const closeTimeoutMs = 5000;
+
     try {
-      await this.channel.close();
+      await Promise.race([
+        this.channel.close(),
+        new Promise<void>((_resolve, reject) => {
+          setTimeout(() => {
+            reject(new Error("MCP channel close timed out"));
+          }, closeTimeoutMs);
+        }),
+      ]);
     } catch (error: unknown) {
       console.error(`[occ] MCP close error: ${toErrorMessage(error)}`);
     }

@@ -25,12 +25,14 @@ function main(): void {
   const bridge = new Bridge(config);
 
   process.on("SIGINT", () => {
-    shutdown(bridge, "SIGINT").catch(() => {
+    shutdown(bridge, "SIGINT").catch((error: unknown) => {
+      console.error(`[occ] shutdown error: ${toErrorMessage(error)}`);
       process.exit(1);
     });
   });
   process.on("SIGTERM", () => {
-    shutdown(bridge, "SIGTERM").catch(() => {
+    shutdown(bridge, "SIGTERM").catch((error: unknown) => {
+      console.error(`[occ] shutdown error: ${toErrorMessage(error)}`);
       process.exit(1);
     });
   });

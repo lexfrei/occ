@@ -149,10 +149,17 @@ export class GatewayWebSocket {
 
       ws.addEventListener("error", () => {
         console.error("[occ] WS connection error");
-        this.stopped = true;
-        this.authReject?.(new Error("WebSocket connection failed"));
-        this.authResolve = undefined;
-        this.authReject = undefined;
+
+        if (this.authReject) {
+          // Initial connection failed — reject the start() promise, don't reconnect
+          const rejectFunction = this.authReject;
+          this.authResolve = undefined;
+          this.authReject = undefined;
+          this.stopped = true;
+          rejectFunction(new Error("WebSocket connection failed"));
+        }
+
+        // For established connections, handleDisconnect (from close event) handles reconnect
       });
     });
   }
