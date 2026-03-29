@@ -138,13 +138,13 @@ export class OpenClawClient {
       return entry.id;
     }
 
-    const truncatedContent = entry.content.slice(0, OpenClawClient.maxKeyContentLength);
-
+    // With timestamp: truncate content since timestamp provides uniqueness
     if (entry.timestamp) {
-      return `ts:${entry.timestamp}:${truncatedContent}`;
+      return `ts:${entry.timestamp}:${entry.content.slice(0, OpenClawClient.maxKeyContentLength)}`;
     }
 
-    return `content:${truncatedContent}`;
+    // Without timestamp or id: full content is the only identifier
+    return `content:${entry.content}`;
   }
 
   /** Prevent unbounded memory growth by capping the seen IDs set. */
