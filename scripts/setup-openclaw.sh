@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Headless OpenClaw setup for use with OCC.
-# Creates config directories, generates a gateway token,
-# writes a passthrough agent config, and starts the gateway.
+# Creates config, generates a gateway token, registers OCC as a model provider,
+# and starts the gateway in Docker.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -13,11 +13,14 @@ TOKEN_FILE="${DATA_DIR}/.token"
 CONFIG_FILE="${DATA_DIR}/openclaw.json"
 ENV_FILE="${PROJECT_DIR}/.env"
 
+OCC_PORT="${OCC_PORT:-3456}"
+OCC_API_TOKEN="${OCC_API_TOKEN:-occ-bridge-token}"
+
 mkdir -p "$DATA_DIR" "$WORKSPACE_DIR"
 
-# Generate token if not exists
+# Generate gateway token if not exists
 if [ ! -f "$TOKEN_FILE" ]; then
-  TOKEN="occ-$(openssl rand -hex 24)"
+  TOKEN="occ-gw-$(openssl rand -hex 24)"
   echo "$TOKEN" > "$TOKEN_FILE"
   chmod 600 "$TOKEN_FILE"
   echo "[setup] Generated gateway token"
@@ -32,43 +35,61 @@ OPENCLAW_GATEWAY_TOKEN=${TOKEN}
 EOF
 echo "[setup] Wrote ${ENV_FILE}"
 
-# Write OpenClaw config with passthrough agent
-if [ ! -f "$CONFIG_FILE" ]; then
-  cat > "$CONFIG_FILE" << 'JSON'
+# Write OpenClaw config with OCC as model provider
+cat > "$CONFIG_FILE" << EOF
 {
-  "agent": {
-    "model": "none"
-  },
   "gateway": {
+    "mode": "local",
     "auth": {
-      "mode": "token"
+      "mode": "token",
+      "token": "${TOKEN}"
+    },
+    "controlUi": {
+      "allowedOrigins": ["http://localhost:18789", "http://127.0.0.1:18789"]
+    }
+  },
+  "models": {
+    "providers": {
+      "occ": {
+        "baseUrl": "http://host.docker.internal:${OCC_PORT}/v1",
+        "apiKey": "${OCC_API_TOKEN}",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "claude-code",
+            "name": "Claude Code (via OCC)",
+            "contextWindow": 200000,
+            "maxTokens": 16384
+          }
+        ]
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "occ/claude-code"
+      }
     }
   }
 }
-JSON
-  echo "[setup] Wrote OpenClaw config (passthrough agent)"
-else
-  echo "[setup] OpenClaw config already exists, skipping"
-fi
-
-# Run onboard
-echo "[setup] Running onboard..."
-docker compose --file "${PROJECT_DIR}/compose.yaml" run \
-  --rm --no-deps --entrypoint node openclaw-gateway \
-  dist/index.js onboard --mode local --no-install-daemon
+EOF
+echo "[setup] Wrote OpenClaw config (OCC as model provider)"
 
 # Start gateway
 echo "[setup] Starting OpenClaw Gateway..."
 docker compose --file "${PROJECT_DIR}/compose.yaml" up --detach openclaw-gateway
 
-echo "[setup] Waiting for gateway to be healthy..."
-timeout 60 bash -c 'until docker compose --file "'"${PROJECT_DIR}/compose.yaml"'" ps --format json | grep -q healthy; do sleep 2; done' || {
+echo "[setup] Waiting for gateway health..."
+timeout 60 bash -c 'until curl --silent --fail http://127.0.0.1:18789/healthz > /dev/null 2>&1; do sleep 2; done' || {
   echo "[setup] WARNING: Gateway health check timed out"
 }
 
 echo ""
-echo "OpenClaw Gateway is running on http://127.0.0.1:18789"
+echo "OpenClaw Gateway running on http://127.0.0.1:18789"
+echo "OCC model provider configured at http://host.docker.internal:${OCC_PORT}/v1"
 echo ""
-echo "To use with OCC:"
-echo "  export OPENCLAW_GATEWAY_TOKEN=\"${TOKEN}\""
-echo "  claude --dangerously-load-development-channels server:occ"
+echo "Next steps:"
+echo "  1. Add a messenger channel: docker compose --profile cli run --rm openclaw-cli channels add --channel telegram --token <BOT_TOKEN>"
+echo "  2. Restart gateway: docker compose restart openclaw-gateway"
+echo "  3. Start Claude Code with OCC: claude --dangerously-load-development-channels server:occ"
