@@ -2,7 +2,7 @@
  * Configuration loader. Reads from environment variables.
  */
 
-import { type OccConfig } from "./types.js";
+import { type OccConfig, type TransportMode } from "./types.js";
 
 const DEFAULT_OPENCLAW_URL = "http://127.0.0.1:18789";
 const DEFAULT_SESSION_KEY = "main";
@@ -22,6 +22,16 @@ function parseAllowedSenders(raw: string | undefined): ReadonlySet<string> {
   );
 }
 
+function parseTransport(raw: string | undefined): TransportMode {
+  const value = raw?.trim().toLowerCase();
+
+  if (value === "ws" || value === "rest") {
+    return value;
+  }
+
+  return "auto";
+}
+
 export function loadConfig(): OccConfig {
   const openclawToken = process.env["OPENCLAW_GATEWAY_TOKEN"] ?? process.env["OCC_OPENCLAW_TOKEN"];
 
@@ -39,5 +49,6 @@ export function loadConfig(): OccConfig {
     allowedSenders: parseAllowedSenders(process.env["OCC_ALLOWED_SENDERS"]),
     pollIntervalMs: Number(process.env["OCC_POLL_INTERVAL_MS"]) || DEFAULT_POLL_INTERVAL_MS,
     sessionTtlMs: Number(process.env["OCC_SESSION_TTL_MS"]) || DEFAULT_SESSION_TTL_MS,
+    transport: parseTransport(process.env["OCC_TRANSPORT"]),
   };
 }

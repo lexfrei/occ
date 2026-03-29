@@ -1,8 +1,9 @@
 /**
- * Bridge orchestration: wires MCP channel, OpenClaw client,
+ * Bridge orchestration: wires MCP channel, OpenClaw client (REST or WS),
  * session map, security gate, and permission relay together.
  */
 
+import { GatewayWebSocket } from "./gateway-ws.js";
 import { McpChannel } from "./mcp-channel.js";
 import { OpenClawClient } from "./openclaw-client.js";
 import { parsePermissionVerdict } from "./permission-relay.js";
@@ -10,41 +11,64 @@ import { SenderGate } from "./security.js";
 import { SessionMap } from "./session-map.js";
 import { type InboundMessage, type OccConfig, type OutboundReply } from "./types.js";
 
+/** Common interface for both REST and WS transports. */
+interface Transport {
+  onInboundMessage: (callback: (message: InboundMessage) => void) => void;
+  start: () => Promise<void> | void;
+  stop: () => void;
+  sendReply: (sessionKey: string, text: string) => Promise<void>;
+}
+
 export class Bridge {
   private readonly channel: McpChannel;
-  private readonly openClaw: OpenClawClient;
+  private readonly transport: Transport;
   private readonly sessions: SessionMap;
   private readonly gate: SenderGate;
+  private readonly transportName: string;
   private cleanupTimer: ReturnType<typeof setInterval> | undefined;
 
   constructor(config: OccConfig) {
     this.channel = new McpChannel();
-    this.openClaw = new OpenClawClient(config);
     this.sessions = new SessionMap(config.sessionTtlMs);
     this.gate = new SenderGate(config.allowedSenders);
+
+    if (config.transport === "rest") {
+      this.transport = new OpenClawClient(config);
+      this.transportName = "REST polling";
+    } else {
+      this.transport = new GatewayWebSocket(config);
+      this.transportName = "WebSocket";
+    }
 
     this.wireInbound();
     this.wireOutbound();
   }
 
-  /** Start the bridge: connect MCP, start polling OpenClaw. */
+  /** Start the bridge: connect MCP, start transport. */
   async start(): Promise<void> {
     await this.channel.connect();
-    this.openClaw.start();
-    this.startCleanup();
 
-    console.error("[occ] bridge started");
+    try {
+      await this.transport.start();
+      console.error(`[occ] bridge started (transport: ${this.transportName})`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`[occ] ${this.transportName} failed: ${errorMessage}`);
+      throw error;
+    }
 
     if (this.gate.isOpen) {
       console.error("[occ] WARNING: sender gate is open — all senders allowed");
     } else {
       console.error(`[occ] sender gate: ${String(this.gate.allowlistSize)} senders allowed`);
     }
+
+    this.startCleanup();
   }
 
   /** Stop the bridge gracefully. */
   stop(): void {
-    this.openClaw.stop();
+    this.transport.stop();
 
     if (this.cleanupTimer) {
       clearInterval(this.cleanupTimer);
@@ -53,7 +77,7 @@ export class Bridge {
   }
 
   private wireInbound(): void {
-    this.openClaw.onInboundMessage((message: InboundMessage) => {
+    this.transport.onInboundMessage((message: InboundMessage) => {
       this.handleInbound(message).catch((error: unknown) => {
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.error(`[occ] inbound handler error: ${errorMessage}`);
@@ -100,10 +124,10 @@ export class Bridge {
     const session = this.sessions.get(reply.chatId);
 
     if (session) {
-      await this.openClaw.sendReply(session.sessionKey, reply.text);
+      await this.transport.sendReply(session.sessionKey, reply.text);
     } else {
       console.error(`[occ] no session found for chatId ${reply.chatId}, using as session key`);
-      await this.openClaw.sendReply(reply.chatId, reply.text);
+      await this.transport.sendReply(reply.chatId, reply.text);
     }
   }
 

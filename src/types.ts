@@ -46,18 +46,23 @@ export interface SessionContext {
   messageCount: number;
 }
 
+/** Transport mode for connecting to OpenClaw Gateway. */
+export type TransportMode = "auto" | "ws" | "rest";
+
 /** Application configuration. */
 export interface OccConfig {
   /** OpenClaw Gateway base URL. */
   readonly openclawUrl: string;
   /** Bearer token for OpenClaw API auth. */
   readonly openclawToken: string;
-  /** OpenClaw session key to monitor. */
+  /** OpenClaw session keys to monitor (comma-separated). */
   readonly sessionKey: string;
   /** Allowed sender IDs (empty set = allow all). */
   readonly allowedSenders: ReadonlySet<string>;
-  /** Polling interval in milliseconds. */
+  /** Polling interval in milliseconds (REST transport only). */
   readonly pollIntervalMs: number;
   /** Session TTL in milliseconds. */
   readonly sessionTtlMs: number;
+  /** Transport mode: "ws" for WebSocket, "rest" for polling, "auto" tries WS first. */
+  readonly transport: TransportMode;
 }
