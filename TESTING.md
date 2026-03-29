@@ -78,29 +78,29 @@ Status: `[ ]` not tested, `[x]` passed, `[!]` failed, `[-]` not applicable, `[~]
 | ----- | ------------------------------- | ----------------------------------------- | --------------------------------------- | ------ |
 | 1.1.1 | Simple text message             | Send "Hello" to bot                       | Bot replies with a greeting             | `[x]`  |
 | 1.1.2 | Question requiring reasoning    | Send "What is 2+2?"                       | Bot replies with "4" or explanation     | `[x]`  |
-| 1.1.3 | Multi-sentence response         | Ask something requiring a detailed answer | Full response delivered, not truncated  | `[ ]`  |
+| 1.1.3 | Multi-sentence response         | Ask something requiring a detailed answer | Full response delivered, not truncated  | `[x]`  |
 | 1.1.4 | Non-English message             | Send "Привет, как дела?"                  | Bot replies in Russian                  | `[x]`  |
-| 1.1.5 | Empty message                   | Send whitespace-only message              | Bot ignores or OpenClaw filters it      | `[ ]`  |
-| 1.1.6 | Very long message (>4000 chars) | Send a large text block                   | Bot receives and processes full message | `[ ]`  |
+| 1.1.5 | Empty message                   | Send whitespace-only message              | Bot ignores or OpenClaw filters it      | `[-]`  |
+| 1.1.6 | Very long message (>4000 chars) | Send a large text block                   | Bot receives and processes full message | `[x]`  |
 
 ### 1.2 Response delivery
 
 | #     | Scenario                         | Steps                               | Expected                                                  | Status |
 | ----- | -------------------------------- | ----------------------------------- | --------------------------------------------------------- | ------ |
-| 1.2.1 | Short response                   | Ask "Say yes"                       | "Yes" delivered within ~10s                               | `[ ]`  |
-| 1.2.2 | Long response (>4096 chars)      | Ask for a detailed explanation      | Response split into multiple Telegram messages (chunking) | `[ ]`  |
-| 1.2.3 | Markdown in response             | Ask Claude to format with markdown  | Telegram renders markdown (bold, italic, code blocks)     | `[ ]`  |
-| 1.2.4 | Code blocks in response          | Ask "Write a hello world in Python" | Code block rendered properly, not split mid-block         | `[ ]`  |
-| 1.2.5 | Response with special characters | Ask for text with `< > & " '`       | Characters rendered correctly, not escaped/broken         | `[ ]`  |
+| 1.2.1 | Short response                   | Ask "Say yes"                       | "Yes" delivered within ~10s                               | `[x]`  |
+| 1.2.2 | Long response (>4096 chars)      | Ask for a detailed explanation      | Response split into multiple Telegram messages (chunking) | `[x]`  |
+| 1.2.3 | Markdown in response             | Ask Claude to format with markdown  | Telegram renders markdown (bold, italic, code blocks)     | `[x]`  |
+| 1.2.4 | Code blocks in response          | Ask "Write a hello world in Python" | Code block rendered properly, not split mid-block         | `[x]`  |
+| 1.2.5 | Response with special characters | Ask for text with `< > & " '`       | Characters rendered correctly, not escaped/broken         | `[x]`  |
 
 ### 1.3 Response timing
 
 | #     | Scenario                    | Steps                                     | Expected                                                       | Status |
 | ----- | --------------------------- | ----------------------------------------- | -------------------------------------------------------------- | ------ |
-| 1.3.1 | Typing indicator appears    | Send message, observe Telegram            | "typing..." appears while Claude processes                     | `[ ]`  |
-| 1.3.2 | Typing indicator disappears | Wait for response                         | Typing stops when response arrives                             | `[ ]`  |
-| 1.3.3 | Typing TTL (2 min)          | Ask something that takes >2 min           | Typing stops at 2 min, response still arrives later (or error) | `[ ]`  |
-| 1.3.4 | Reply timeout               | Ask something Claude can't answer in time | Error message delivered after OCC_REPLY_TIMEOUT_MS             | `[ ]`  |
+| 1.3.1 | Typing indicator appears    | Send message, observe Telegram            | "typing..." appears while Claude processes                     | `[-]`  |
+| 1.3.2 | Typing indicator disappears | Wait for response                         | Typing stops when response arrives                             | `[-]`  |
+| 1.3.3 | Typing TTL (2 min)          | Ask something that takes >2 min           | Typing stops at 2 min, response still arrives later (or error) | `[-]`  |
+| 1.3.4 | Reply timeout               | Ask something Claude can't answer in time | Error message delivered after OCC_REPLY_TIMEOUT_MS             | `[-]`  |
 
 ---
 
@@ -111,10 +111,10 @@ Status: `[ ]` not tested, `[x]` passed, `[!]` failed, `[-]` not applicable, `[~]
 | #     | Scenario                        | Steps                                   | Expected                                                   | Status |
 | ----- | ------------------------------- | --------------------------------------- | ---------------------------------------------------------- | ------ |
 | 2.1.1 | Simple command                  | "Run `ls -la` in the project directory" | Claude executes ls, includes output in reply               | `[x]`  |
-| 2.1.2 | Package install                 | "Install cowsay with npm globally"      | Claude runs npm install, reports success                   | `[ ]`  |
-| 2.1.3 | Git operations                  | "What is the current git branch?"       | Claude runs git branch, reports result                     | `[ ]`  |
-| 2.1.4 | Command with long output        | "Show the contents of package.json"     | Full file contents included (possibly truncated by Claude) | `[ ]`  |
-| 2.1.5 | Failing command                 | "Run `cat nonexistent_file`"            | Claude reports the error, does not crash                   | `[ ]`  |
+| 2.1.2 | Package install                 | "Install cowsay with npm globally"      | Claude runs npm install, reports success                   | `[x]`  |
+| 2.1.3 | Git operations                  | "What is the current git branch?"       | Claude runs git branch, reports result                     | `[x]`  |
+| 2.1.4 | Command with long output        | "Show the contents of package.json"     | Full file contents included (possibly truncated by Claude) | `[x]`  |
+| 2.1.5 | Failing command                 | "Run `cat nonexistent_file`"            | Claude reports the error, does not crash                   | `[x]`  |
 | 2.1.6 | No permission prompt (headless) | Any command                             | Executes without prompting — auto-approve hook works       | `[x]`  |
 
 ### 2.2 File operations
@@ -122,9 +122,9 @@ Status: `[ ]` not tested, `[x]` passed, `[!]` failed, `[-]` not applicable, `[~]
 | #     | Scenario         | Steps                                        | Expected                                               | Status |
 | ----- | ---------------- | -------------------------------------------- | ------------------------------------------------------ | ------ |
 | 2.2.1 | Create file      | "Create a file called test.txt with 'hello'" | File created on disk                                   | `[x]`  |
-| 2.2.2 | Edit file        | "Add a line to test.txt"                     | File modified                                          | `[ ]`  |
-| 2.2.3 | Read file        | "What's in test.txt?"                        | Contents reported                                      | `[ ]`  |
-| 2.2.4 | Edit ~/CLAUDE.md | "Add '# Test' to ~/CLAUDE.md"                | File created/edited without prompts                    | `[ ]`  |
+| 2.2.2 | Edit file        | "Add a line to test.txt"                     | File modified                                          | `[x]`  |
+| 2.2.3 | Read file        | "What's in test.txt?"                        | Contents reported                                      | `[x]`  |
+| 2.2.4 | Edit ~/CLAUDE.md | "Add '# Test' to ~/CLAUDE.md"                | File created/edited without prompts                    | `[x]`  |
 | 2.2.5 | Create skill     | "Create .claude/skills/hello/SKILL.md"       | Skill file created without prompts (auto-approve hook) | `[x]`  |
 
 ---
@@ -135,23 +135,23 @@ Status: `[ ]` not tested, `[x]` passed, `[!]` failed, `[-]` not applicable, `[~]
 
 | #     | Scenario                              | Steps                                              | Expected                                    | Status |
 | ----- | ------------------------------------- | -------------------------------------------------- | ------------------------------------------- | ------ |
-| 3.1.1 | Proactive message to Telegram         | Claude uses `notify(telegram, <chatId>, "Alert!")` | Message arrives in Telegram chat            | `[ ]`  |
-| 3.1.2 | notify without OPENCLAW_GATEWAY_TOKEN | Unset token, try notify                            | Error: "Proactive messaging not configured" | `[ ]`  |
-| 3.1.3 | notify to invalid channel             | `notify("nonexistent", "123", "test")`             | Error from OpenClaw API, surfaced to Claude | `[ ]`  |
-| 3.1.4 | notify to invalid recipient           | `notify("telegram", "000", "test")`                | Error or silent failure from Telegram API   | `[ ]`  |
+| 3.1.1 | Proactive message to Telegram         | Claude uses `notify(telegram, <chatId>, "Alert!")` | Message arrives in Telegram chat            | `[x]`  |
+| 3.1.2 | notify without OPENCLAW_GATEWAY_TOKEN | Unset token, try notify                            | Error: "Proactive messaging not configured" | `[x]`  |
+| 3.1.3 | notify to invalid channel             | `notify("nonexistent", "123", "test")`             | Error from OpenClaw API, surfaced to Claude | `[-]`  |
+| 3.1.4 | notify to invalid recipient           | `notify("telegram", "000", "test")`                | Error or silent failure from Telegram API   | `[-]`  |
 
 ### 3.2 send_file tool
 
 | #     | Scenario                      | Steps                                     | Expected                                                           | Status |
 | ----- | ----------------------------- | ----------------------------------------- | ------------------------------------------------------------------ | ------ |
-| 3.2.1 | Send text file                | "Send the contents of package.json to me" | File content arrives as text message                               | `[ ]`  |
-| 3.2.2 | Send large file (>4000 chars) | File with 10k chars                       | Truncated, with "[truncated, showing first 4000 of N chars]" note  | `[ ]`  |
-| 3.2.3 | Send file >1MB                | Create 2MB file, try to send              | Error: "File too large"                                            | `[ ]`  |
-| 3.2.4 | Send binary file              | Try to send an image or binary            | Error: "Binary files are not supported"                            | `[ ]`  |
-| 3.2.5 | Path traversal attempt        | "Send /etc/passwd"                        | Error: "filePath must be within the project directory"             | `[ ]`  |
-| 3.2.6 | Symlink escape                | Create symlink to /etc/hosts, try to send | Error: "filePath resolves outside the project directory (symlink)" | `[ ]`  |
-| 3.2.7 | Relative path traversal       | "Send ../../etc/passwd"                   | Error: path traversal rejected                                     | `[ ]`  |
-| 3.2.8 | Nonexistent file              | "Send nonexistent.txt"                    | Error: "File not found"                                            | `[ ]`  |
+| 3.2.1 | Send text file                | "Send the contents of package.json to me" | File content arrives as text message                               | `[x]`  |
+| 3.2.2 | Send large file (>4000 chars) | File with 10k chars                       | Truncated, with "[truncated, showing first 4000 of N chars]" note  | `[x]`  |
+| 3.2.3 | Send file >1MB                | Create 2MB file, try to send              | Error: "File too large"                                            | `[x]`  |
+| 3.2.4 | Send binary file              | Try to send an image or binary            | Error: "Binary files are not supported"                            | `[x]`  |
+| 3.2.5 | Path traversal attempt        | "Send /etc/passwd"                        | Error: "filePath must be within the project directory"             | `[x]`  |
+| 3.2.6 | Symlink escape                | Create symlink to /etc/hosts, try to send | Error: "filePath resolves outside the project directory (symlink)" | `[x]`  |
+| 3.2.7 | Relative path traversal       | "Send ../../etc/passwd"                   | Error: path traversal rejected                                     | `[x]`  |
+| 3.2.8 | Nonexistent file              | "Send nonexistent.txt"                    | Error: "File not found"                                            | `[x]`  |
 
 ---
 
@@ -161,19 +161,19 @@ Status: `[ ]` not tested, `[x]` passed, `[!]` failed, `[-]` not applicable, `[~]
 
 | #     | Scenario                        | Steps                                                                 | Expected                                             | Status |
 | ----- | ------------------------------- | --------------------------------------------------------------------- | ---------------------------------------------------- | ------ |
-| 4.1.1 | Create cron job                 | `openclaw cron add --schedule "*/5 * * * *" --message "Check status"` | Job created, fires every 5 min                       | `[ ]`  |
-| 4.1.2 | Cron triggers Claude Code       | Wait for cron fire                                                    | Claude Code receives the message, processes, replies | `[ ]`  |
-| 4.1.3 | Cron response delivered         | After cron processing                                                 | Response appears in Telegram                         | `[ ]`  |
-| 4.1.4 | Cron during active conversation | User chatting + cron fires                                            | Cron queued until active request completes           | `[ ]`  |
-| 4.1.5 | Delete cron job                 | `openclaw cron remove <id>`                                           | Job removed, no more triggers                        | `[ ]`  |
+| 4.1.1 | Create cron job                 | `openclaw cron add --schedule "*/5 * * * *" --message "Check status"` | Job created, fires every 5 min                       | `[-]`  |
+| 4.1.2 | Cron triggers Claude Code       | Wait for cron fire                                                    | Claude Code receives the message, processes, replies | `[-]`  |
+| 4.1.3 | Cron response delivered         | After cron processing                                                 | Response appears in Telegram                         | `[-]`  |
+| 4.1.4 | Cron during active conversation | User chatting + cron fires                                            | Cron queued until active request completes           | `[-]`  |
+| 4.1.5 | Delete cron job                 | `openclaw cron remove <id>`                                           | Job removed, no more triggers                        | `[-]`  |
 
 ### 4.2 Heartbeat
 
 | #     | Scenario                         | Steps                          | Expected                              | Status |
 | ----- | -------------------------------- | ------------------------------ | ------------------------------------- | ------ |
-| 4.2.1 | Heartbeat fires                  | Wait for heartbeat interval    | Claude Code receives heartbeat prompt | `[ ]`  |
-| 4.2.2 | Heartbeat with nothing to report | Claude replies HEARTBEAT_OK    | No message delivered to user          | `[ ]`  |
-| 4.2.3 | Heartbeat with update            | Claude has something to report | Update delivered to user in Telegram  | `[ ]`  |
+| 4.2.1 | Heartbeat fires                  | Wait for heartbeat interval    | Claude Code receives heartbeat prompt | `[-]`  |
+| 4.2.2 | Heartbeat with nothing to report | Claude replies HEARTBEAT_OK    | No message delivered to user          | `[-]`  |
+| 4.2.3 | Heartbeat with update            | Claude has something to report | Update delivered to user in Telegram  | `[-]`  |
 
 ---
 
@@ -183,22 +183,22 @@ Status: `[ ]` not tested, `[x]` passed, `[!]` failed, `[-]` not applicable, `[~]
 
 | #     | Scenario          | Steps                    | Expected                                                                           | Status |
 | ----- | ----------------- | ------------------------ | ---------------------------------------------------------------------------------- | ------ |
-| 5.1.1 | Photo             | Send a photo to bot      | Behavior documented: image blocks filtered, text description may or may not arrive | `[ ]`  |
-| 5.1.2 | Document (text)   | Send a .txt file         | Content extracted and forwarded to Claude                                          | `[ ]`  |
-| 5.1.3 | Document (PDF)    | Send a PDF               | Behavior depends on OpenClaw PDF handling                                          | `[ ]`  |
-| 5.1.4 | Voice note        | Send a voice message     | NOT transcribed (known OpenClaw limitation). Placeholder text arrives              | `[ ]`  |
-| 5.1.5 | Sticker           | Send a sticker           | Static: vision-analyzed description. Animated: skipped                             | `[ ]`  |
-| 5.1.6 | Video             | Send a video             | Likely dropped or placeholder                                                      | `[ ]`  |
-| 5.1.7 | Location          | Share location           | Behavior unknown — document result                                                 | `[ ]`  |
-| 5.1.8 | Contact           | Share a contact          | Behavior unknown — document result                                                 | `[ ]`  |
-| 5.1.9 | Forwarded message | Forward a message to bot | Original text arrives, forward metadata likely lost                                | `[ ]`  |
+| 5.1.1 | Photo             | Send a photo to bot      | Behavior documented: image blocks filtered, text description may or may not arrive | `[-]`  |
+| 5.1.2 | Document (text)   | Send a .txt file         | Content extracted and forwarded to Claude                                          | `[-]`  |
+| 5.1.3 | Document (PDF)    | Send a PDF               | Behavior depends on OpenClaw PDF handling                                          | `[-]`  |
+| 5.1.4 | Voice note        | Send a voice message     | NOT transcribed (known OpenClaw limitation). Placeholder text arrives              | `[-]`  |
+| 5.1.5 | Sticker           | Send a sticker           | Static: vision-analyzed description. Animated: skipped                             | `[-]`  |
+| 5.1.6 | Video             | Send a video             | Likely dropped or placeholder                                                      | `[-]`  |
+| 5.1.7 | Location          | Share location           | Behavior unknown — document result                                                 | `[-]`  |
+| 5.1.8 | Contact           | Share a contact          | Behavior unknown — document result                                                 | `[-]`  |
+| 5.1.9 | Forwarded message | Forward a message to bot | Original text arrives, forward metadata likely lost                                | `[-]`  |
 
 ### 5.2 Content format handling
 
 | #     | Scenario                 | Steps                                                                            | Expected                                                      | Status |
 | ----- | ------------------------ | -------------------------------------------------------------------------------- | ------------------------------------------------------------- | ------ |
-| 5.2.1 | Multimodal content array | OpenClaw sends `content: [{type: "text", text: "hi"}, {type: "image_url", ...}]` | extractText returns only text parts, images silently filtered | `[ ]`  |
-| 5.2.2 | Image-only message       | Send only a photo, no caption                                                    | OCC returns 400 "No user message found" (no text to extract)  | `[ ]`  |
+| 5.2.1 | Multimodal content array | OpenClaw sends `content: [{type: "text", text: "hi"}, {type: "image_url", ...}]` | extractText returns only text parts, images silently filtered | `[x]`  |
+| 5.2.2 | Image-only message       | Send only a photo, no caption                                                    | OCC returns 400 "No user message found" (no text to extract)  | `[x]`  |
 
 ---
 
@@ -208,17 +208,17 @@ Status: `[ ]` not tested, `[x]` passed, `[!]` failed, `[-]` not applicable, `[~]
 
 | #     | Scenario                     | Steps                                                         | Expected                                                                 | Status |
 | ----- | ---------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------ | ------ |
-| 6.1.1 | Multi-turn conversation      | Send 5 sequential messages                                    | Claude Code sees conversation context (up to 3 preceding messages)       | `[ ]`  |
-| 6.1.2 | Context after session reset  | Wait for daily reset (or trigger manually), then send message | Fresh context, no previous history                                       | `[ ]`  |
-| 6.1.3 | Long conversation compaction | Send 50+ messages in one session                              | OpenClaw compacts older messages. Claude Code receives compacted summary | `[ ]`  |
+| 6.1.1 | Multi-turn conversation      | Send 5 sequential messages                                    | Claude Code sees conversation context (up to 3 preceding messages)       | `[x]`  |
+| 6.1.2 | Context after session reset  | Wait for daily reset (or trigger manually), then send message | Fresh context, no previous history                                       | `[-]`  |
+| 6.1.3 | Long conversation compaction | Send 50+ messages in one session                              | OpenClaw compacts older messages. Claude Code receives compacted summary | `[-]`  |
 
 ### 6.2 Session isolation
 
 | #     | Scenario                           | Steps                                | Expected                                   | Status |
 | ----- | ---------------------------------- | ------------------------------------ | ------------------------------------------ | ------ |
-| 6.2.1 | DM session                         | Message bot in DM                    | Processed normally                         | `[ ]`  |
-| 6.2.2 | Group session (if configured)      | Message bot in group with @mention   | Processed in separate group session        | `[ ]`  |
-| 6.2.3 | Two users messaging simultaneously | Two users send messages at same time | Processed sequentially (OCC serialization) | `[ ]`  |
+| 6.2.1 | DM session                         | Message bot in DM                    | Processed normally                         | `[x]`  |
+| 6.2.2 | Group session (if configured)      | Message bot in group with @mention   | Processed in separate group session        | `[-]`  |
+| 6.2.3 | Two users messaging simultaneously | Two users send messages at same time | Processed sequentially (OCC serialization) | `[-]`  |
 
 ---
 
@@ -228,23 +228,23 @@ Status: `[ ]` not tested, `[x]` passed, `[!]` failed, `[-]` not applicable, `[~]
 
 | #     | Scenario                    | Steps                                      | Expected                                               | Status |
 | ----- | --------------------------- | ------------------------------------------ | ------------------------------------------------------ | ------ |
-| 7.1.1 | Unpaired user sends message | New user messages bot                      | Receives pairing code, message NOT forwarded to Claude | `[ ]`  |
-| 7.1.2 | Approve pairing             | `openclaw pairing approve telegram <code>` | User added to allowlist, subsequent messages processed | `[ ]`  |
-| 7.1.3 | Reject pairing              | Ignore the code                            | User remains blocked                                   | `[ ]`  |
+| 7.1.1 | Unpaired user sends message | New user messages bot                      | Receives pairing code, message NOT forwarded to Claude | `[-]`  |
+| 7.1.2 | Approve pairing             | `openclaw pairing approve telegram <code>` | User added to allowlist, subsequent messages processed | `[x]`  |
+| 7.1.3 | Reject pairing              | Ignore the code                            | User remains blocked                                   | `[-]`  |
 
 ### 7.2 Access control
 
 | #     | Scenario              | Steps                              | Expected                 | Status |
 | ----- | --------------------- | ---------------------------------- | ------------------------ | ------ |
-| 7.2.1 | Allowed user          | Paired user sends message          | Processed normally       | `[ ]`  |
-| 7.2.2 | Blocked user in group | Non-allowed user messages in group | Message silently dropped | `[ ]`  |
-| 7.2.3 | DM policy disabled    | Set `dmPolicy: "disabled"`         | All DMs rejected         | `[ ]`  |
+| 7.2.1 | Allowed user          | Paired user sends message          | Processed normally       | `[x]`  |
+| 7.2.2 | Blocked user in group | Non-allowed user messages in group | Message silently dropped | `[-]`  |
+| 7.2.3 | DM policy disabled    | Set `dmPolicy: "disabled"`         | All DMs rejected         | `[-]`  |
 
 ### 7.3 OCC authentication
 
 | #     | Scenario                     | Steps                               | Expected          | Status |
 | ----- | ---------------------------- | ----------------------------------- | ----------------- | ------ |
-| 7.3.1 | Valid API token              | OpenClaw sends correct Bearer token | Request processed | `[ ]`  |
+| 7.3.1 | Valid API token              | OpenClaw sends correct Bearer token | Request processed | `[x]`  |
 | 7.3.2 | Invalid API token            | curl with wrong token               | 401 Unauthorized  | `[x]`  |
 | 7.3.3 | Missing Authorization header | curl without auth                   | 401 Unauthorized  | `[x]`  |
 
@@ -256,28 +256,28 @@ Status: `[ ]` not tested, `[x]` passed, `[!]` failed, `[-]` not applicable, `[~]
 
 | #     | Scenario                        | Steps                                     | Expected                                               | Status |
 | ----- | ------------------------------- | ----------------------------------------- | ------------------------------------------------------ | ------ |
-| 8.1.1 | OCC not running                 | Stop OCC, send message                    | OpenClaw returns connection error to user              | `[ ]`  |
-| 8.1.2 | OCC restart during conversation | Kill and restart Claude Code + OCC        | Previous request lost. New messages work after restart | `[ ]`  |
-| 8.1.3 | OCC reply timeout               | Claude Code hangs (e.g., infinite loop)   | Error after OCC_REPLY_TIMEOUT_MS, user notified        | `[ ]`  |
+| 8.1.1 | OCC not running                 | Stop OCC, send message                    | OpenClaw returns connection error to user              | `[x]`  |
+| 8.1.2 | OCC restart during conversation | Kill and restart Claude Code + OCC        | Previous request lost. New messages work after restart | `[x]`  |
+| 8.1.3 | OCC reply timeout               | Claude Code hangs (e.g., infinite loop)   | Error after OCC_REPLY_TIMEOUT_MS, user notified        | `[-]`  |
 | 8.1.4 | Malformed request to OCC        | Send invalid JSON to /v1/chat/completions | 400 error response                                     | `[x]`  |
 | 8.1.5 | Missing messages field          | Send `{"model": "test"}`                  | 400 error response                                     | `[x]`  |
-| 8.1.6 | Invalid message roles           | Send messages with `role: "admin"`        | 400 error response                                     | `[ ]`  |
+| 8.1.6 | Invalid message roles           | Send messages with `role: "admin"`        | 400 error response                                     | `[x]`  |
 
 ### 8.2 OpenClaw errors
 
 | #     | Scenario                      | Steps                     | Expected                                             | Status |
 | ----- | ----------------------------- | ------------------------- | ---------------------------------------------------- | ------ |
-| 8.2.1 | OpenClaw Gateway restart      | Restart gateway container | Bot reconnects, messages resume                      | `[ ]`  |
-| 8.2.2 | Telegram polling interruption | Network hiccup            | Bot resumes polling, may miss messages during outage | `[ ]`  |
-| 8.2.3 | Rate limiting from Telegram   | Rapid message sending     | OpenClaw handles Telegram 429 responses              | `[ ]`  |
+| 8.2.1 | OpenClaw Gateway restart      | Restart gateway container | Bot reconnects, messages resume                      | `[x]`  |
+| 8.2.2 | Telegram polling interruption | Network hiccup            | Bot resumes polling, may miss messages during outage | `[-]`  |
+| 8.2.3 | Rate limiting from Telegram   | Rapid message sending     | OpenClaw handles Telegram 429 responses              | `[-]`  |
 
 ### 8.3 Claude Code errors
 
 | #     | Scenario                     | Steps                                     | Expected                                         | Status |
 | ----- | ---------------------------- | ----------------------------------------- | ------------------------------------------------ | ------ |
-| 8.3.1 | Claude Code rate limited     | Exceed Pro plan limits                    | Error returned to user via OCC/OpenClaw          | `[ ]`  |
-| 8.3.2 | Claude Code context overflow | Very long conversation within one session | Claude Code compacts or errors                   | `[ ]`  |
-| 8.3.3 | MCP connection drop          | Kill Claude Code process                  | OCC process dies, OpenClaw gets connection error | `[ ]`  |
+| 8.3.1 | Claude Code rate limited     | Exceed Pro plan limits                    | Error returned to user via OCC/OpenClaw          | `[-]`  |
+| 8.3.2 | Claude Code context overflow | Very long conversation within one session | Claude Code compacts or errors                   | `[-]`  |
+| 8.3.3 | MCP connection drop          | Kill Claude Code process                  | OCC process dies, OpenClaw gets connection error | `[-]`  |
 
 ---
 
@@ -288,8 +288,8 @@ Status: `[ ]` not tested, `[x]` passed, `[!]` failed, `[-]` not applicable, `[~]
 | #     | Scenario                   | Steps                             | Expected                | Status |
 | ----- | -------------------------- | --------------------------------- | ----------------------- | ------ |
 | 9.1.1 | Bash command auto-approved | Ask Claude to run a shell command | Executes without prompt | `[x]`  |
-| 9.1.2 | File write auto-approved   | Ask Claude to create a file       | Created without prompt  | `[ ]`  |
-| 9.1.3 | Web fetch auto-approved    | Ask Claude to fetch a URL         | Fetched without prompt  | `[ ]`  |
+| 9.1.2 | File write auto-approved   | Ask Claude to create a file       | Created without prompt  | `[x]`  |
+| 9.1.3 | Web fetch auto-approved    | Ask Claude to fetch a URL         | Fetched without prompt  | `[x]`  |
 
 ### 9.2 PermissionRequest hook
 
@@ -302,8 +302,8 @@ Status: `[ ]` not tested, `[x]` passed, `[!]` failed, `[-]` not applicable, `[~]
 
 | #     | Scenario                     | Steps                            | Expected                               | Status |
 | ----- | ---------------------------- | -------------------------------- | -------------------------------------- | ------ |
-| 9.3.1 | Bash without hooks           | Remove hooks, ask for command    | Blocks on permission prompt, times out | `[ ]`  |
-| 9.3.2 | .claude/ write without hooks | Remove hooks, try skill creation | Blocks on permission prompt            | `[ ]`  |
+| 9.3.1 | Bash without hooks           | Remove hooks, ask for command    | Blocks on permission prompt, times out | `[-]`  |
+| 9.3.2 | .claude/ write without hooks | Remove hooks, try skill creation | Blocks on permission prompt            | `[-]`  |
 
 ---
 
@@ -314,11 +314,11 @@ Status: `[ ]` not tested, `[x]` passed, `[!]` failed, `[-]` not applicable, `[~]
 | #      | Scenario               | Steps                                      | Expected                                                                          | Status |
 | ------ | ---------------------- | ------------------------------------------ | --------------------------------------------------------------------------------- | ------ |
 | 10.1.1 | Non-streaming response | `stream: false`                            | JSON response with `choices[].message.content`                                    | `[x]`  |
-| 10.1.2 | Streaming response     | `stream: true`                             | SSE stream with `data:` lines and `[DONE]`                                        | `[ ]`  |
-| 10.1.3 | Missing stream field   | Omit `stream`                              | Non-streaming response (default)                                                  | `[ ]`  |
-| 10.1.4 | String content         | `content: "hello"`                         | Processed as text                                                                 | `[ ]`  |
-| 10.1.5 | Array content          | `content: [{type: "text", text: "hello"}]` | Processed as text                                                                 | `[ ]`  |
-| 10.1.6 | System + user messages | Full conversation with system prompt       | System prompt excluded from Claude Code notification. Only user message forwarded | `[ ]`  |
+| 10.1.2 | Streaming response     | `stream: true`                             | SSE stream with `data:` lines and `[DONE]`                                        | `[x]`  |
+| 10.1.3 | Missing stream field   | Omit `stream`                              | Non-streaming response (default)                                                  | `[x]`  |
+| 10.1.4 | String content         | `content: "hello"`                         | Processed as text                                                                 | `[x]`  |
+| 10.1.5 | Array content          | `content: [{type: "text", text: "hello"}]` | Processed as text                                                                 | `[x]`  |
+| 10.1.6 | System + user messages | Full conversation with system prompt       | System prompt excluded from Claude Code notification. Only user message forwarded | `[x]`  |
 
 ### 10.2 /v1/models
 
@@ -342,40 +342,40 @@ Status: `[ ]` not tested, `[x]` passed, `[!]` failed, `[-]` not applicable, `[~]
 
 | #      | Scenario                         | Steps                            | Expected                                                                  | Status |
 | ------ | -------------------------------- | -------------------------------- | ------------------------------------------------------------------------- | ------ |
-| 11.1.1 | Channel metadata in notification | Send from Telegram               | Notification meta includes `channel: "telegram"`                          | `[ ]`  |
-| 11.1.2 | History included                 | Send 3+ messages in conversation | Claude sees "Conversation context" with preceding messages                | `[ ]`  |
-| 11.1.3 | History truncated to 3           | Send 10 messages                 | Only last 3 preceding messages shown, with "[N earlier messages omitted]" | `[ ]`  |
+| 11.1.1 | Channel metadata in notification | Send from Telegram               | Notification meta includes `channel: "telegram"`                          | `[x]`  |
+| 11.1.2 | History included                 | Send 3+ messages in conversation | Claude sees "Conversation context" with preceding messages                | `[x]`  |
+| 11.1.3 | History truncated to 3           | Send 10 messages                 | Only last 3 preceding messages shown, with "[N earlier messages omitted]" | `[x]`  |
 | 11.1.4 | System prompt summary            | OpenClaw includes system prompt  | First 500 chars forwarded as `[Agent context: ...]`                       | `[x]`  |
-| 11.1.5 | Trailing assistant excluded      | Messages after last user message | NOT included in history                                                   | `[ ]`  |
-| 11.1.6 | Image URL forwarded              | Send photo with caption          | Claude sees `[Image: <url>]` in notification                              | `[ ]`  |
-| 11.1.7 | Multiple images                  | Send message with 2+ images      | All image URLs listed as separate `[Image: ...]` lines                    | `[ ]`  |
-| 11.1.8 | Whitespace-only system prompt    | System prompt is spaces only     | No `[Agent context: ...]` line (trimmed to empty)                         | `[ ]`  |
+| 11.1.5 | Trailing assistant excluded      | Messages after last user message | NOT included in history                                                   | `[x]`  |
+| 11.1.6 | Image URL forwarded              | Send photo with caption          | Claude sees `[Image: <url>]` in notification                              | `[x]`  |
+| 11.1.7 | Multiple images                  | Send message with 2+ images      | All image URLs listed as separate `[Image: ...]` lines                    | `[x]`  |
+| 11.1.8 | Whitespace-only system prompt    | System prompt is spaces only     | No `[Agent context: ...]` line (trimmed to empty)                         | `[x]`  |
 
 ### 11.2 Streaming behavior (P2)
 
 | #      | Scenario                     | Steps                                | Expected                                | Status |
 | ------ | ---------------------------- | ------------------------------------ | --------------------------------------- | ------ |
-| 11.2.1 | Response chunked for display | Ask a question, observe Telegram     | Text appears gradually, not all at once | `[ ]`  |
-| 11.2.2 | Chunk boundary at word       | Response with spaces every ~50 chars | No extra spaces in delivered text       | `[ ]`  |
-| 11.2.3 | Long word (URL) hard-split   | Response contains 100-char URL       | URL split at 50 chars, no data loss     | `[ ]`  |
-| 11.2.4 | Short response single chunk  | Response < 50 chars                  | Delivered as single chunk               | `[ ]`  |
+| 11.2.1 | Response chunked for display | Ask a question, observe Telegram     | Text appears gradually, not all at once | `[x]`  |
+| 11.2.2 | Chunk boundary at word       | Response with spaces every ~50 chars | No extra spaces in delivered text       | `[x]`  |
+| 11.2.3 | Long word (URL) hard-split   | Response contains 100-char URL       | URL split at 50 chars, no data loss     | `[x]`  |
+| 11.2.4 | Short response single chunk  | Response < 50 chars                  | Delivered as single chunk               | `[x]`  |
 
 ### 11.3 Delivery confirmation (P2)
 
 | #      | Scenario                      | Steps                      | Expected                                            | Status |
 | ------ | ----------------------------- | -------------------------- | --------------------------------------------------- | ------ |
-| 11.3.1 | notify returns message ID     | Claude uses notify tool    | Tool reports "Sent to telegram:123 (id: <id>)"      | `[ ]`  |
-| 11.3.2 | notify without ID in response | OpenClaw returns no ID     | Tool reports "Sent to telegram:123"                 | `[ ]`  |
-| 11.3.3 | send_file returns message ID  | Claude uses send_file tool | Tool reports "File sent to telegram:123 (id: <id>)" | `[ ]`  |
+| 11.3.1 | notify returns message ID     | Claude uses notify tool    | Tool reports "Sent to telegram:123 (id: <id>)"      | `[x]`  |
+| 11.3.2 | notify without ID in response | OpenClaw returns no ID     | Tool reports "Sent to telegram:123"                 | `[x]`  |
+| 11.3.3 | send_file returns message ID  | Claude uses send_file tool | Tool reports "File sent to telegram:123 (id: <id>)" | `[x]`  |
 
 ### 11.4 File code fences (P2)
 
 | #      | Scenario               | Steps                       | Expected                                                    | Status |
 | ------ | ---------------------- | --------------------------- | ----------------------------------------------------------- | ------ |
-| 11.4.1 | TypeScript file        | Send .ts file via send_file | Wrapped in ` ```ts ` code fence                             | `[ ]`  |
-| 11.4.2 | Python file            | Send .py file via send_file | Wrapped in ` ```py ` code fence                             | `[ ]`  |
-| 11.4.3 | File without extension | Send Makefile via send_file | Wrapped in ` ```text ` code fence (default)                 | `[ ]`  |
-| 11.4.4 | Large file truncated   | Send file > 8000 chars      | Truncated with "[truncated, showing first 8000 of N chars]" | `[ ]`  |
+| 11.4.1 | TypeScript file        | Send .ts file via send_file | Wrapped in ` ```ts ` code fence                             | `[x]`  |
+| 11.4.2 | Python file            | Send .py file via send_file | Wrapped in ` ```py ` code fence                             | `[x]`  |
+| 11.4.3 | File without extension | Send Makefile via send_file | Wrapped in ` ```text ` code fence (default)                 | `[x]`  |
+| 11.4.4 | Large file truncated   | Send file > 8000 chars      | Truncated with "[truncated, showing first 8000 of N chars]" | `[x]`  |
 
 ---
 
@@ -383,11 +383,11 @@ Status: `[ ]` not tested, `[x]` passed, `[!]` failed, `[-]` not applicable, `[~]
 
 | #    | Scenario                           | Steps                                                     | Expected                                                                  | Status |
 | ---- | ---------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------- | ------ |
-| 12.1 | Rapid fire messages                | Send 5 messages in 2 seconds                              | Processed sequentially, all get responses                                 | `[ ]`  |
-| 12.2 | Message during long processing     | Claude is executing multi-step task, send another message | Second message queued, processed after first completes                    | `[ ]`  |
-| 12.3 | Cron + user message simultaneously | Cron fires while user is chatting                         | Serialized, one at a time                                                 | `[ ]`  |
-| 12.4 | OCC uptime 24h                     | Run for 24 hours                                          | No memory leaks, no degradation                                           | `[ ]`  |
-| 12.5 | 100+ messages in one session       | Send many messages over hours                             | OpenClaw compacts history, Claude Code compacts separately. System stable | `[ ]`  |
+| 12.1 | Rapid fire messages                | Send 5 messages in 2 seconds                              | Processed sequentially, all get responses                                 | `[x]`  |
+| 12.2 | Message during long processing     | Claude is executing multi-step task, send another message | Second message queued, processed after first completes                    | `[x]`  |
+| 12.3 | Cron + user message simultaneously | Cron fires while user is chatting                         | Serialized, one at a time                                                 | `[-]`  |
+| 12.4 | OCC uptime 24h                     | Run for 24 hours                                          | No memory leaks, no degradation                                           | `[-]`  |
+| 12.5 | 100+ messages in one session       | Send many messages over hours                             | OpenClaw compacts history, Claude Code compacts separately. System stable | `[-]`  |
 
 ---
 
@@ -423,6 +423,6 @@ Run before testing any other scenarios.
 | 14.3 | OCC reachable from OpenClaw  | `docker exec <container> curl http://host.docker.internal:3456/health` | `{"ok":true}`                                                          | `[x]`  |
 | 14.4 | Telegram bot connected       | `openclaw channels status`                                             | `telegram default: enabled, running`                                   | `[x]`  |
 | 14.5 | Agent model correct          | Check gateway logs                                                     | `agent model: occ/claude-code`                                         | `[x]`  |
-| 14.6 | Claude Code listening        | Check tmux session                                                     | `Listening for channel messages from: server:occ`                      | `[ ]`  |
+| 14.6 | Claude Code listening        | Check tmux session                                                     | `Listening for channel messages from: server:occ`                      | `[x]`  |
 | 14.7 | Auto-approve hooks installed | `.claude/hooks/auto-approve.sh` exists and executable                  | `echo test \| .claude/hooks/auto-approve.sh` returns JSON with `allow` | `[x]`  |
-| 14.8 | Telegram pairing approved    | Send message from approved user                                        | Response received, not pairing code                                    | `[ ]`  |
+| 14.8 | Telegram pairing approved    | Send message from approved user                                        | Response received, not pairing code                                    | `[x]`  |
