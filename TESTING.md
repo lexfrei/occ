@@ -291,8 +291,37 @@ Status: `[ ]` not tested, `[x]` passed, `[!]` failed, `[-]` not applicable, `[~]
 | 11.1.1 | Channel metadata in notification | Send from Telegram               | Notification meta includes `channel: "telegram"`                          | `[ ]`  |
 | 11.1.2 | History included                 | Send 3+ messages in conversation | Claude sees "Conversation context" with preceding messages                | `[ ]`  |
 | 11.1.3 | History truncated to 3           | Send 10 messages                 | Only last 3 preceding messages shown, with "[N earlier messages omitted]" | `[ ]`  |
-| 11.1.4 | System prompt excluded           | OpenClaw includes system prompt  | NOT forwarded to Claude Code                                              | `[ ]`  |
+| 11.1.4 | System prompt summary            | OpenClaw includes system prompt  | First 500 chars forwarded as `[Agent context: ...]`                       | `[ ]`  |
 | 11.1.5 | Trailing assistant excluded      | Messages after last user message | NOT included in history                                                   | `[ ]`  |
+| 11.1.6 | Image URL forwarded              | Send photo with caption          | Claude sees `[Image: <url>]` in notification                              | `[ ]`  |
+| 11.1.7 | Multiple images                  | Send message with 2+ images      | All image URLs listed as separate `[Image: ...]` lines                    | `[ ]`  |
+| 11.1.8 | Whitespace-only system prompt    | System prompt is spaces only     | No `[Agent context: ...]` line (trimmed to empty)                         | `[ ]`  |
+
+### 11.2 Streaming behavior (P2)
+
+| #      | Scenario                     | Steps                                | Expected                                | Status |
+| ------ | ---------------------------- | ------------------------------------ | --------------------------------------- | ------ |
+| 11.2.1 | Response chunked for display | Ask a question, observe Telegram     | Text appears gradually, not all at once | `[ ]`  |
+| 11.2.2 | Chunk boundary at word       | Response with spaces every ~50 chars | No extra spaces in delivered text       | `[ ]`  |
+| 11.2.3 | Long word (URL) hard-split   | Response contains 100-char URL       | URL split at 50 chars, no data loss     | `[ ]`  |
+| 11.2.4 | Short response single chunk  | Response < 50 chars                  | Delivered as single chunk               | `[ ]`  |
+
+### 11.3 Delivery confirmation (P2)
+
+| #      | Scenario                      | Steps                      | Expected                                            | Status |
+| ------ | ----------------------------- | -------------------------- | --------------------------------------------------- | ------ |
+| 11.3.1 | notify returns message ID     | Claude uses notify tool    | Tool reports "Sent to telegram:123 (id: <id>)"      | `[ ]`  |
+| 11.3.2 | notify without ID in response | OpenClaw returns no ID     | Tool reports "Sent to telegram:123"                 | `[ ]`  |
+| 11.3.3 | send_file returns message ID  | Claude uses send_file tool | Tool reports "File sent to telegram:123 (id: <id>)" | `[ ]`  |
+
+### 11.4 File code fences (P2)
+
+| #      | Scenario               | Steps                       | Expected                                                    | Status |
+| ------ | ---------------------- | --------------------------- | ----------------------------------------------------------- | ------ |
+| 11.4.1 | TypeScript file        | Send .ts file via send_file | Wrapped in ` ```ts ` code fence                             | `[ ]`  |
+| 11.4.2 | Python file            | Send .py file via send_file | Wrapped in ` ```py ` code fence                             | `[ ]`  |
+| 11.4.3 | File without extension | Send Makefile via send_file | Wrapped in ` ```text ` code fence (default)                 | `[ ]`  |
+| 11.4.4 | Large file truncated   | Send file > 8000 chars      | Truncated with "[truncated, showing first 8000 of N chars]" | `[ ]`  |
 
 ---
 
