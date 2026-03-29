@@ -1,42 +1,22 @@
-export interface InboundMessage {
-  readonly id: string;
-  readonly platform: string;
-  readonly senderName: string;
-  readonly senderId: string;
-  readonly chatId: string;
+/** OpenAI chat completion message. */
+export interface ChatMessage {
+  readonly role: "system" | "user" | "assistant";
   readonly content: string;
-  /** ISO 8601 timestamp. */
-  readonly timestamp: string;
-  readonly sessionKey: string;
 }
 
-export interface OutboundReply {
-  readonly chatId: string;
-  readonly text: string;
+/** OpenAI chat completion request body. */
+export interface ChatCompletionRequest {
+  readonly model: string;
+  readonly messages: readonly ChatMessage[];
+  readonly stream?: boolean;
+  readonly temperature?: number;
+  readonly max_tokens?: number;
 }
 
-export interface SessionContext {
-  readonly platform: string;
-  readonly senderId: string;
-  readonly senderName: string;
-  readonly sessionKey: string;
-  lastActivityMs: number;
-  messageCount: number;
-}
-
-export type PermissionBehavior = "allow" | "deny";
-
-export type TransportMode = "auto" | "ws" | "rest";
-
+/** Application configuration. */
 export interface OccConfig {
-  readonly openclawUrl: string;
-  readonly openclawToken: string;
-  /** Comma-separated session keys to monitor. */
-  readonly sessionKey: string;
-  /** Empty set = allow all. */
-  readonly allowedSenders: ReadonlySet<string>;
-  /** REST transport only. */
-  readonly pollIntervalMs: number;
-  readonly sessionTtlMs: number;
-  readonly transport: TransportMode;
+  /** Port for the OpenAI-compatible HTTP server. */
+  readonly port: number;
+  /** Bearer token clients must send (OpenClaw's apiKey for this provider). */
+  readonly apiToken: string;
 }

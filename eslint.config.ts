@@ -97,11 +97,11 @@ export default tseslint.config(
           format: ["camelCase", "PascalCase"],
         },
         {
-          selector: "objectLiteralProperty",
+          selector: ["objectLiteralProperty", "typeProperty"],
           format: null,
           filter: {
             regex:
-              "^(authorization|content-type|Authorization|Content-Type|claude/channel|request_id|newlines-between|prefer-inline)",
+              "^(authorization|content-type|cache-control|owned_by|finish_reason|prompt_tokens|completion_tokens|total_tokens|max_tokens|Authorization|Content-Type|claude/channel|request_id|newlines-between|prefer-inline)",
             match: true,
           },
         },

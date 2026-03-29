@@ -1,12 +1,14 @@
 /**
  * OCC — OpenClaw-Claude Connector
  *
- * Entry point: loads config, creates bridge, starts MCP channel + OpenClaw transport.
+ * OpenAI-compatible model provider that routes OpenClaw messages to Claude Code.
+ * Runs as a Claude Code Channel (MCP stdio) and an HTTP server simultaneously.
  */
 
 import { Bridge } from "./bridge.js";
 import { loadConfig } from "./config.js";
 import { toErrorMessage } from "./errors.js";
+import { VERSION } from "./version.js";
 
 async function shutdown(bridge: Bridge, signal: string): Promise<void> {
   console.error(`[occ] received ${signal}, shutting down...`);
@@ -15,14 +17,11 @@ async function shutdown(bridge: Bridge, signal: string): Promise<void> {
 }
 
 function main(): void {
-  console.error("[occ] OpenClaw-Claude Connector starting...");
+  console.error(`[occ] OpenClaw-Claude Connector ${VERSION}`);
 
   const config = loadConfig();
-
-  console.error(`[occ] OpenClaw URL: ${config.openclawUrl}`);
-  console.error(`[occ] Sessions: ${config.sessionKey}`);
-
   const bridge = new Bridge(config);
+
   let shuttingDown = false;
 
   const handleSignal = (signal: string): void => {

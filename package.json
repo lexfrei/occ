@@ -1,7 +1,7 @@
 {
   "name": "occ",
   "version": "0.0.0",
-  "description": "OpenClaw-Claude Connector — bridge between Claude Code Channels and OpenClaw",
+  "description": "OpenClaw-Claude Connector — OpenAI-compatible model provider routing to Claude Code",
   "type": "module",
   "license": "BSD-3-Clause",
   "author": "Aleksei Sviridkin <f@lex.la>",
