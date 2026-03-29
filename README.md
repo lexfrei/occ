@@ -10,12 +10,12 @@ OCC bridges [Claude Code Channels](https://code.claude.com/docs/en/channels) and
 
 Claude Code already ships with official channel plugins for Telegram, Discord, and iMessage. OCC exists because OpenClaw supports far more platforms — if you use WhatsApp, Signal, Slack, Matrix, IRC, Microsoft Teams, or any other messenger that OpenClaw integrates with, OCC lets you reach Claude Code from there too.
 
-|           | Official Telegram plugin   | OCC via OpenClaw                  |
-| --------- | -------------------------- | --------------------------------- |
-| Platforms | Telegram only              | 25+ (anything OpenClaw supports)  |
-| Setup     | BotFather token            | OpenClaw Gateway token            |
-| Runs as   | Claude Code Channel plugin | Claude Code Channel (development) |
-| Protocol  | Direct Telegram Bot API    | OpenClaw REST API polling         |
+|           | Official Telegram plugin   | OCC via OpenClaw                           |
+| --------- | -------------------------- | ------------------------------------------ |
+| Platforms | Telegram only              | 25+ (anything OpenClaw supports)           |
+| Setup     | BotFather token            | OpenClaw Gateway token                     |
+| Runs as   | Claude Code Channel plugin | Claude Code Channel (development)          |
+| Protocol  | Direct Telegram Bot API    | OpenClaw Gateway WebSocket (REST fallback) |
 
 Both approaches use the same Claude Code Channels MCP protocol and the same sender allowlist security model.
 
@@ -120,7 +120,7 @@ OCC inherits the sender allowlist model from Claude Code Channels:
 - **Sender gating** — only platform user IDs listed in `OCC_ALLOWED_SENDERS` can push messages into your session. Everyone else is silently dropped. Set this to your own IDs on each platform.
 - **Gate on sender, not room** — in group chats, the sender's ID is checked, not the room ID. This prevents other people in a shared channel from injecting messages.
 - **Permission relay** — if Claude Code hits a permission prompt (e.g., wanting to run a shell command), OCC forwards the prompt to your messenger. Reply `yes <code>` or `no <code>` to approve or deny remotely. Since anyone on the allowlist can approve tool use, only add IDs you control.
-- **No credential storage** — OCC never stores your OpenClaw token on disk. It reads from the environment at startup.
+- **No token storage** — OCC never stores your OpenClaw token on disk. It reads from the environment at startup. The Ed25519 device key pair for WebSocket authentication is stored in `~/.config/occ/device-keys.json` with `0600` permissions.
 - **`*` is for development only** — leaving `OCC_ALLOWED_SENDERS` unset or set to `*` disables gating entirely. This is convenient for testing but should never be used in a real setup.
 
 ## MCP tools

@@ -15,9 +15,10 @@ Set up the OCC bridge by configuring environment variables.
 ## Optional
 
 - `OCC_OPENCLAW_URL` — OpenClaw Gateway URL (default: `http://127.0.0.1:18789`)
-- `OCC_SESSION_KEY` — OpenClaw session key to monitor (default: `main`)
+- `OCC_SESSION_KEY` — Session keys to monitor, comma-separated (default: `main`)
 - `OCC_ALLOWED_SENDERS` — Comma-separated sender IDs for allowlist, or `*` for all (default: allow all)
-- `OCC_POLL_INTERVAL_MS` — Polling interval in milliseconds (default: `2000`)
+- `OCC_TRANSPORT` — Transport mode: `ws`, `rest`, or `auto` (default: `auto` — tries WebSocket, falls back to REST)
+- `OCC_POLL_INTERVAL_MS` — Polling interval in milliseconds, REST only (default: `2000`)
 - `OCC_SESSION_TTL_MS` — Session TTL in milliseconds (default: `86400000` / 24h)
 
 ## Quick Start

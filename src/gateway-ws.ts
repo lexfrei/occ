@@ -42,6 +42,9 @@ interface ChatEventPayload {
   readonly sessionKey: string;
   readonly state: string;
   readonly message: ChatEventMessage;
+  readonly originatingChannel?: string;
+  readonly originatingTo?: string;
+  readonly originatingAccountId?: string;
 }
 
 type MessageCallback = (message: InboundMessage) => void;
@@ -62,6 +65,8 @@ export class GatewayWebSocket {
   private pendingResponses = new Map<string, (response: WsResponse) => void>();
   private stopped = false;
   private tickTimer: ReturnType<typeof setInterval> | undefined;
+  private authResolve: (() => void) | undefined;
+  private authReject: ((error: Error) => void) | undefined;
 
   constructor(config: OccConfig) {
     const baseUrl = config.openclawUrl.replace(/^http/u, "ws");
@@ -119,6 +124,9 @@ export class GatewayWebSocket {
     );
 
     return new Promise<void>((resolve, reject) => {
+      this.authResolve = resolve;
+      this.authReject = reject;
+
       const ws = new WebSocket(this.wsUrl);
 
       ws.addEventListener("message", (event) => {
@@ -133,7 +141,6 @@ export class GatewayWebSocket {
         this.websocket = ws;
         this.reconnectDelayMs = INITIAL_RECONNECT_DELAY_MS;
         console.error("[occ] WS connected, waiting for challenge...");
-        resolve();
       });
 
       ws.addEventListener("close", () => {
@@ -142,7 +149,9 @@ export class GatewayWebSocket {
 
       ws.addEventListener("error", () => {
         console.error("[occ] WS connection error");
-        reject(new Error("WebSocket connection failed"));
+        this.authReject?.(new Error("WebSocket connection failed"));
+        this.authResolve = undefined;
+        this.authReject = undefined;
       });
     });
   }
@@ -167,7 +176,14 @@ export class GatewayWebSocket {
     raw: string,
     identity: Awaited<ReturnType<typeof getDeviceIdentity>>,
   ): Promise<void> {
-    const frame = JSON.parse(raw) as WsFrame;
+    const parsed: unknown = JSON.parse(raw);
+
+    if (typeof parsed !== "object" || parsed === null || !("type" in parsed)) {
+      console.error("[occ] WS received non-frame message, ignoring");
+      return;
+    }
+
+    const frame = parsed as WsFrame;
 
     if (frame.type === "event") {
       if (frame.event === "connect.challenge") {
@@ -234,10 +250,15 @@ export class GatewayWebSocket {
       const policy = response.payload?.["policy"] as Record<string, unknown> | undefined;
       const tickIntervalMs = Number(policy?.["tickIntervalMs"]) || 15_000;
       this.startTickTimer(tickIntervalMs);
+      this.authResolve?.();
     } else {
       const errorMessage = response.error?.message ?? "unknown error";
       console.error(`[occ] WS auth failed: ${errorMessage}`);
+      this.authReject?.(new Error(`WS auth failed: ${errorMessage}`));
     }
+
+    this.authResolve = undefined;
+    this.authReject = undefined;
   }
 
   private handleChatEvent(frame: WsEvent): void {
@@ -274,11 +295,14 @@ export class GatewayWebSocket {
 
     this.messageIdCounter += 1;
 
+    const platform = payload.originatingChannel ?? "unknown";
+    const senderId = payload.originatingAccountId ?? payload.originatingTo ?? "unknown";
+
     const message: InboundMessage = {
       id: `ws-${String(this.messageIdCounter)}`,
-      platform: "unknown",
-      senderName: "User",
-      senderId: "unknown",
+      platform,
+      senderName: senderId,
+      senderId,
       chatId: payload.sessionKey,
       content: textContent,
       timestamp: payload.message.timestamp

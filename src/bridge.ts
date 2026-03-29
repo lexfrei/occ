@@ -21,24 +21,20 @@ interface Transport {
 
 export class Bridge {
   private readonly channel: McpChannel;
-  private readonly transport: Transport;
+  private transport: Transport;
   private readonly sessions: SessionMap;
   private readonly gate: SenderGate;
-  private readonly transportName: string;
+  private readonly config: OccConfig;
+  private transportName: string;
   private cleanupTimer: ReturnType<typeof setInterval> | undefined;
 
   constructor(config: OccConfig) {
+    this.config = config;
     this.channel = new McpChannel();
     this.sessions = new SessionMap(config.sessionTtlMs);
     this.gate = new SenderGate(config.allowedSenders);
-
-    if (config.transport === "rest") {
-      this.transport = new OpenClawClient(config);
-      this.transportName = "REST polling";
-    } else {
-      this.transport = new GatewayWebSocket(config);
-      this.transportName = "WebSocket";
-    }
+    this.transport = this.createTransport(config.transport);
+    this.transportName = config.transport === "rest" ? "REST polling" : "WebSocket";
 
     this.wireInbound();
     this.wireOutbound();
@@ -47,15 +43,7 @@ export class Bridge {
   /** Start the bridge: connect MCP, start transport. */
   async start(): Promise<void> {
     await this.channel.connect();
-
-    try {
-      await this.transport.start();
-      console.error(`[occ] bridge started (transport: ${this.transportName})`);
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error(`[occ] ${this.transportName} failed: ${errorMessage}`);
-      throw error;
-    }
+    await this.startTransport();
 
     if (this.gate.isOpen) {
       console.error("[occ] WARNING: sender gate is open — all senders allowed");
@@ -64,6 +52,33 @@ export class Bridge {
     }
 
     this.startCleanup();
+  }
+
+  private createTransport(mode: OccConfig["transport"]): Transport {
+    if (mode === "rest") {
+      return new OpenClawClient(this.config);
+    }
+
+    return new GatewayWebSocket(this.config);
+  }
+
+  private async startTransport(): Promise<void> {
+    try {
+      await this.transport.start();
+      console.error(`[occ] bridge started (transport: ${this.transportName})`);
+    } catch (error: unknown) {
+      if (this.config.transport === "auto") {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`[occ] WebSocket failed (${errorMessage}), falling back to REST polling`);
+        this.transport = new OpenClawClient(this.config);
+        this.transportName = "REST polling";
+        this.wireInbound();
+        await this.transport.start();
+        console.error("[occ] bridge started (transport: REST polling, fallback)");
+      } else {
+        throw error;
+      }
+    }
   }
 
   /** Stop the bridge gracefully. */
@@ -90,17 +105,17 @@ export class Bridge {
   }
 
   private async handleInbound(message: InboundMessage): Promise<void> {
-    const verdict = parsePermissionVerdict(message.content);
-
-    if (verdict) {
-      await this.channel.sendPermissionVerdict(verdict.requestId, verdict.behavior);
-      return;
-    }
-
     if (!this.gate.isAllowed(message)) {
       console.error(
         `[occ] blocked message from ${message.senderId} (${message.platform}) — not in allowlist`,
       );
+      return;
+    }
+
+    const verdict = parsePermissionVerdict(message.content);
+
+    if (verdict) {
+      await this.channel.sendPermissionVerdict(verdict.requestId, verdict.behavior);
       return;
     }
 

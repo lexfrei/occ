@@ -35,7 +35,14 @@ function base64UrlDecode(encoded: string): Uint8Array {
   const binary = atob(padded);
   const bytes = new Uint8Array(binary.length);
   for (let index = 0; index < binary.length; index++) {
-    bytes[index] = binary.codePointAt(index) ?? 0;
+    // atob output is Latin-1 (0-255), codePointAt always returns a value for valid indices
+    const code = binary.codePointAt(index);
+
+    if (code === undefined) {
+      throw new Error(`Unexpected undefined codepoint at index ${String(index)}`);
+    }
+
+    bytes[index] = code;
   }
   return bytes;
 }
@@ -76,7 +83,22 @@ async function generateKeyPair(): Promise<DeviceIdentity> {
 }
 
 function loadKeyPair(): DeviceIdentity {
-  const stored = JSON.parse(readFileSync(KEYS_FILE, "utf8")) as StoredKeys;
+  const raw: unknown = JSON.parse(readFileSync(KEYS_FILE, "utf8"));
+
+  if (
+    typeof raw !== "object" ||
+    raw === null ||
+    !("publicKeyBase64Url" in raw) ||
+    !("privateKeyBase64Url" in raw) ||
+    !("deviceId" in raw) ||
+    typeof (raw as StoredKeys).publicKeyBase64Url !== "string" ||
+    typeof (raw as StoredKeys).privateKeyBase64Url !== "string" ||
+    typeof (raw as StoredKeys).deviceId !== "string"
+  ) {
+    throw new Error("Invalid device keys file format");
+  }
+
+  const stored = raw as StoredKeys;
 
   return {
     publicKeyBase64Url: stored.publicKeyBase64Url,

@@ -41,7 +41,8 @@ export class OpenClawClient {
   private readonly pollIntervalMs: number;
 
   private onMessage: MessageCallback | undefined;
-  private lastSeenId: string | undefined;
+  private readonly seenIds = new Set<string>();
+  private initialized = false;
   private pollTimer: ReturnType<typeof setInterval> | undefined;
   private messageIdCounter = 0;
 
@@ -141,16 +142,34 @@ export class OpenClawClient {
     const entries = await this.fetchHistory();
     const userMessages = entries.filter((entry) => entry.role === "user");
 
-    for (const entry of userMessages) {
-      const entryId = entry.id ?? entry.timestamp ?? "";
+    if (!this.initialized) {
+      for (const entry of userMessages) {
+        this.seenIds.add(OpenClawClient.entryKey(entry));
+      }
+      this.initialized = true;
+      return;
+    }
 
-      if (this.lastSeenId === undefined) {
-        this.lastSeenId = entryId;
-      } else if (entryId !== this.lastSeenId) {
-        this.lastSeenId = entryId;
+    for (const entry of userMessages) {
+      const key = OpenClawClient.entryKey(entry);
+
+      if (!this.seenIds.has(key)) {
+        this.seenIds.add(key);
         this.emitMessage(entry);
       }
     }
+  }
+
+  private static entryKey(entry: HistoryEntry): string {
+    if (entry.id) {
+      return entry.id;
+    }
+
+    if (entry.timestamp) {
+      return `${entry.timestamp}:${entry.content.slice(0, 64)}`;
+    }
+
+    return `hash:${entry.content}`;
   }
 
   private async fetchHistory(): Promise<readonly HistoryEntry[]> {
