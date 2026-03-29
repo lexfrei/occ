@@ -25,7 +25,7 @@ Both approaches use the same Claude Code Channels MCP protocol and the same send
 You on Telegram / WhatsApp / Discord / Signal / Slack / ...
     ↕  (native platform integrations)
 OpenClaw Gateway (localhost:18789)
-    ↕  (REST API: poll history for inbound, post messages for outbound)
+    ↕  (WebSocket with Ed25519 device auth, or REST API polling fallback)
 OCC (single TypeScript process, Bun runtime)
     ↕  (stdio MCP, JSON-RPC 2.0)
 Your Claude Code session
@@ -35,7 +35,7 @@ Your Claude Code session
 OCC is a single process with two roles:
 
 - **Claude Code Channel** — an [MCP server](https://modelcontextprotocol.io/) declaring the `claude/channel` experimental capability. Pushes inbound messages as `notifications/claude/channel` and exposes a `reply` tool that Claude calls to respond.
-- **OpenClaw REST client** — polls `GET /api/sessions/:key/history` for new user messages and delivers Claude's replies via `POST /api/sessions/:key/messages`.
+- **OpenClaw client** — connects to the Gateway via WebSocket (with Ed25519 device authentication) for real-time message delivery, or falls back to REST API polling. Replies go back through the same transport.
 
 Messages flow through the bridge without storage — OCC holds no conversation history beyond an in-memory session map for routing replies to the correct chat.
 
@@ -99,16 +99,19 @@ Claude Code receives it as a `<channel source="occ">` event. Type a response in 
 
 All settings are environment variables. No config files.
 
-| Variable                 | Required | Default                  | Description                                           |
-| ------------------------ | -------- | ------------------------ | ----------------------------------------------------- |
-| `OPENCLAW_GATEWAY_TOKEN` | **Yes**  | —                        | Bearer token for OpenClaw Gateway authentication      |
-| `OCC_ALLOWED_SENDERS`    | No       | `*` (allow all)          | Comma-separated platform sender IDs for your accounts |
-| `OCC_OPENCLAW_URL`       | No       | `http://127.0.0.1:18789` | OpenClaw Gateway URL                                  |
-| `OCC_SESSION_KEY`        | No       | `main`                   | OpenClaw session key to monitor                       |
-| `OCC_POLL_INTERVAL_MS`   | No       | `2000`                   | How often to check for new messages (ms)              |
-| `OCC_SESSION_TTL_MS`     | No       | `86400000`               | Inactive session cleanup threshold (24h)              |
+| Variable                 | Required | Default                  | Description                                                    |
+| ------------------------ | -------- | ------------------------ | -------------------------------------------------------------- |
+| `OPENCLAW_GATEWAY_TOKEN` | **Yes**  | —                        | Bearer token for OpenClaw Gateway authentication               |
+| `OCC_ALLOWED_SENDERS`    | No       | `*` (allow all)          | Comma-separated platform sender IDs for your accounts          |
+| `OCC_OPENCLAW_URL`       | No       | `http://127.0.0.1:18789` | OpenClaw Gateway URL                                           |
+| `OCC_SESSION_KEY`        | No       | `main`                   | Session keys to monitor (comma-separated for multi-session)    |
+| `OCC_TRANSPORT`          | No       | `auto`                   | Transport: `ws` (WebSocket), `rest` (polling), `auto` (try WS) |
+| `OCC_POLL_INTERVAL_MS`   | No       | `2000`                   | How often to check for new messages (REST only, ms)            |
+| `OCC_SESSION_TTL_MS`     | No       | `86400000`               | Inactive session cleanup threshold (24h)                       |
 
 `OCC_OPENCLAW_TOKEN` is accepted as an alias for `OPENCLAW_GATEWAY_TOKEN`. If both are set, the standard OpenClaw variable takes precedence.
+
+Multi-session example: `OCC_SESSION_KEY="main,work,personal"` monitors all three sessions simultaneously.
 
 ## Security model
 
@@ -137,17 +140,20 @@ src/
   index.ts              Entry point — loads config, starts bridge
   bridge.ts             Orchestration: wires all modules together
   mcp-channel.ts        MCP server with claude/channel capability
-  openclaw-client.ts    OpenClaw Gateway REST client
+  gateway-ws.ts         WebSocket client with Ed25519 device auth
+  openclaw-client.ts    REST API polling client (fallback transport)
+  device-identity.ts    Ed25519 key generation, storage, and signing
   session-map.ts        Chat ID ↔ OpenClaw session mapping
   security.ts           Sender allowlist gate
   permission-relay.ts   Permission verdict parsing and formatting
   config.ts             Environment variable loader
   types.ts              Shared TypeScript types
 test/
-  config.test.ts        Config loader tests
-  security.test.ts      Sender gate tests
-  session-map.test.ts   Session mapping tests
+  config.test.ts            Config loader tests
+  security.test.ts          Sender gate tests
+  session-map.test.ts       Session mapping tests
   permission-relay.test.ts  Permission parsing tests
+  device-identity.test.ts   Ed25519 key and signing tests
 ```
 
 ## Development
@@ -164,8 +170,6 @@ Linting is intentionally strict: `eslint.configs.all` + `typescript-eslint/stric
 
 ## Limitations
 
-- **Polling, not push** — OCC polls the OpenClaw REST API every 2 seconds (configurable). There is no real-time WebSocket connection. Latency is bounded by the poll interval.
-- **Single session** — OCC monitors one OpenClaw session key at a time. Multi-session support is not implemented.
 - **Research preview** — Claude Code Channels are in [research preview](https://code.claude.com/docs/en/channels#research-preview). The `--channels` flag syntax and protocol may change.
 - **Development channel** — OCC uses `--dangerously-load-development-channels` because it is not on the Anthropic plugin allowlist. This requires confirmation at startup.
 
