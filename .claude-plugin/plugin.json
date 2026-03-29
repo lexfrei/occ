@@ -1,0 +1,6 @@
+{
+  "name": "occ",
+  "description": "OpenClaw-Claude Connector — bridge between Claude Code Channels and OpenClaw Gateway",
+  "version": "0.0.1",
+  "keywords": ["openclaw", "channel", "mcp", "bridge"]
+}

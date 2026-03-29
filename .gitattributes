@@ -1,0 +1,12 @@
+# Auto-detect text files and normalize line endings
+* text=auto
+
+# Vendored dependencies
+node_modules/** linguist-vendored
+
+# Generated files
+dist/** linguist-generated
+bun.lockb linguist-generated binary
+
+# Documentation
+*.md linguist-documentation
