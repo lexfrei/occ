@@ -1,6 +1,6 @@
 {
   "name": "occ",
-  "version": "0.0.1",
+  "version": "0.0.0",
   "description": "OpenClaw-Claude Connector — bridge between Claude Code Channels and OpenClaw",
   "type": "module",
   "license": "BSD-3-Clause",

@@ -7,7 +7,8 @@
 
 import { getDeviceIdentity, signChallenge } from "./device-identity.js";
 import { toErrorMessage } from "./errors.js";
-import { type InboundMessage, type OccConfig, VERSION } from "./types.js";
+import { type InboundMessage, type OccConfig } from "./types.js";
+import { VERSION } from "./version.js";
 
 interface WsRequest {
   readonly type: "req";

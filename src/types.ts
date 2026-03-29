@@ -28,9 +28,6 @@ export type PermissionBehavior = "allow" | "deny";
 
 export type TransportMode = "auto" | "ws" | "rest";
 
-/** Single source of truth for the package version. */
-export const VERSION = "0.0.1";
-
 export interface OccConfig {
   readonly openclawUrl: string;
   readonly openclawToken: string;

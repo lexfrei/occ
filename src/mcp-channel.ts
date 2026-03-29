@@ -10,12 +10,8 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 
 import { toErrorMessage } from "./errors.js";
-import {
-  type InboundMessage,
-  type OutboundReply,
-  type PermissionBehavior,
-  VERSION,
-} from "./types.js";
+import { type InboundMessage, type OutboundReply, type PermissionBehavior } from "./types.js";
+import { VERSION } from "./version.js";
 
 const CHANNEL_INSTRUCTIONS = [
   "You are connected to OpenClaw via the OCC bridge.",
