@@ -35,6 +35,7 @@ export interface InteractiveOption {
 /** A single interactive block (buttons or select). */
 export interface InteractiveBlock {
   readonly type: string;
+  readonly text?: string | undefined;
   readonly buttons?: readonly InteractiveButton[] | undefined;
   readonly options?: readonly InteractiveOption[] | undefined;
 }

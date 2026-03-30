@@ -97,16 +97,19 @@ export class Bridge {
 
     this.channel.onReact(async (channel, to, messageId, options) => {
       console.error(`[occ] react → ${channel}:${to}: ${options.emoji} on ${messageId}`);
-      await api.reactToMessage(channel, to, messageId, options);
-      return options.remove
-        ? `Removed ${options.emoji} from ${messageId}`
-        : `Reacted ${options.emoji} to ${messageId}`;
+      const result = await api.reactToMessage(channel, to, messageId, options);
+      const verb = options.remove ? "Removed" : "Reacted";
+      return result.messageId
+        ? `${verb} ${options.emoji} on ${messageId} (id: ${result.messageId})`
+        : `${verb} ${options.emoji} on ${messageId}`;
     });
 
     this.channel.onEditMessage(async (channel, to, messageId, text) => {
       console.error(`[occ] edit → ${channel}:${to}: ${messageId}`);
-      await api.editMessage(channel, to, messageId, text);
-      return `Edited ${messageId} in ${channel}:${to}`;
+      const result = await api.editMessage(channel, to, messageId, text);
+      return result.messageId
+        ? `Edited ${messageId} in ${channel}:${to} (id: ${result.messageId})`
+        : `Edited ${messageId} in ${channel}:${to}`;
     });
 
     console.error("[occ] proactive messaging enabled");

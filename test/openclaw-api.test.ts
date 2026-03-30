@@ -136,6 +136,25 @@ describe("OpenClawApi", () => {
       expect(args["interactive"]).toEqual(interactive);
     });
 
+    it("passes interactive text blocks through to API", async () => {
+      const api = new OpenClawApi(`http://127.0.0.1:${String(port)}`, "token");
+      const interactive = {
+        blocks: [
+          { type: "text", text: "Pick an option:" },
+          { type: "buttons", buttons: [{ label: "Go", value: "go" }] },
+        ],
+      };
+
+      await api.sendMessage("telegram", "123", "prompt", { interactive });
+
+      const body = JSON.parse(lastRequest?.body ?? "{}") as Record<string, unknown>;
+      const args = body["args"] as Record<string, unknown>;
+      const sent = args["interactive"] as { blocks: { type: string; text?: string }[] };
+
+      expect(sent.blocks[0]?.type).toBe("text");
+      expect(sent.blocks[0]?.text).toBe("Pick an option:");
+    });
+
     it("omits optional fields when not provided", async () => {
       const api = new OpenClawApi(`http://127.0.0.1:${String(port)}`, "token");
 

@@ -326,7 +326,7 @@ export class McpChannel {
         try {
           const status = await this.reactHandler(channel, to, messageId, {
             emoji,
-            remove: remove ?? undefined,
+            remove,
           });
           return { content: [{ type: "text", text: status }] };
         } catch (error: unknown) {
