@@ -92,15 +92,17 @@ claude --dangerously-load-development-channels server:occ --permission-mode acce
 
 ## MCP tools
 
-Claude Code gets three tools through the OCC channel:
+Claude Code gets five tools through the OCC channel:
 
-| Tool        | Parameters                  | Description                                                                                        |
-| ----------- | --------------------------- | -------------------------------------------------------------------------------------------------- |
-| `reply`     | `text`                      | Respond to the current message (synchronous, delivered as HTTP response)                           |
-| `notify`    | `channel`, `to`, `text`     | Send a proactive message to any channel/user (works anytime)                                       |
-| `send_file` | `channel`, `to`, `filePath` | Read a local file, wrap in code fence with syntax highlighting (max 1MB, truncated to ~8000 chars) |
+| Tool           | Parameters                                          | Description                                                                                        |
+| -------------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `reply`        | `text`                                              | Respond to the current message (synchronous, delivered as HTTP response)                           |
+| `notify`       | `channel`, `to`, `text`, `replyTo?`, `interactive?` | Send a proactive message (supports threading via replyTo, buttons/selects via interactive)         |
+| `send_file`    | `channel`, `to`, `filePath`                         | Read a local file, wrap in code fence with syntax highlighting (max 1MB, truncated to ~8000 chars) |
+| `react`        | `channel`, `to`, `messageId`, `emoji`, `remove?`    | Add or remove an emoji reaction on a message                                                       |
+| `edit_message` | `channel`, `to`, `messageId`, `text`                | Edit a previously sent message                                                                     |
 
-`reply` works during an active request. `notify` and `send_file` work anytime — they call the OpenClaw REST API directly and require `OPENCLAW_GATEWAY_TOKEN`.
+`reply` works during an active request. All other tools work anytime — they call the OpenClaw REST API directly and require `OPENCLAW_GATEWAY_TOKEN`.
 
 ## Scheduling
 
@@ -222,7 +224,6 @@ bun run test         # bun test
 - **Images forwarded as URLs only** — image URLs from multimodal messages appear as `[Image: <url>]`. Claude Code cannot view the actual images.
 - **Files sent as text** — `send_file` sends content as text in code fences. Binary attachment support (base64 buffer) is implemented but requires an upstream fix ([openclaw/openclaw#57335](https://github.com/openclaw/openclaw/pull/57335)).
 - **Voice not transcribed** — voice messages arrive as placeholder text. Transcription depends on OpenClaw.
-- **No reactions, editing, or threading** — Claude Code cannot send emoji reactions, edit messages, or reply in threads through OCC.
 
 ## License
 
