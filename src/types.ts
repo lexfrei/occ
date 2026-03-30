@@ -20,6 +20,42 @@ export interface ChatCompletionRequest {
   readonly max_tokens?: number;
 }
 
+/** A button in an interactive message block. */
+export interface InteractiveButton {
+  readonly label: string;
+  readonly value: string;
+}
+
+/** A select option in an interactive message block. */
+export interface InteractiveOption {
+  readonly label: string;
+  readonly value: string;
+}
+
+/** A single interactive block (buttons or select). */
+export interface InteractiveBlock {
+  readonly type: string;
+  readonly buttons?: readonly InteractiveButton[] | undefined;
+  readonly options?: readonly InteractiveOption[] | undefined;
+}
+
+/** Interactive payload for OpenClaw messages (buttons, selects). */
+export interface InteractivePayload {
+  readonly blocks: readonly InteractiveBlock[];
+}
+
+/** Options for sending a message with optional threading and interactive content. */
+export interface SendMessageOptions {
+  readonly replyTo?: string | undefined;
+  readonly interactive?: InteractivePayload | undefined;
+}
+
+/** Options for adding/removing a reaction. */
+export interface ReactOptions {
+  readonly emoji: string;
+  readonly remove?: boolean | undefined;
+}
+
 /** Application configuration. */
 export interface OccConfig {
   /** Port for the OpenAI-compatible HTTP server. */

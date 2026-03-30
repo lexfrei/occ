@@ -4,6 +4,8 @@
  * without triggering an agent turn.
  */
 
+import { type ReactOptions, type SendMessageOptions } from "./types.js";
+
 /** Result of sending a message through OpenClaw. */
 export interface DeliveryResult {
   readonly delivered: boolean;
@@ -24,8 +26,49 @@ export class OpenClawApi {
   }
 
   /** Send a message directly to a channel/user via /tools/invoke (no agent turn). */
-  async sendMessage(channel: string, to: string, text: string): Promise<DeliveryResult> {
-    return this.invokeAction("send", { channel, to, message: text });
+  async sendMessage(
+    channel: string,
+    to: string,
+    text: string,
+    options?: SendMessageOptions,
+  ): Promise<DeliveryResult> {
+    const args: Record<string, unknown> = { channel, to, message: text };
+    if (options?.replyTo) {
+      args["replyTo"] = options.replyTo;
+    }
+    if (options?.interactive) {
+      args["interactive"] = options.interactive;
+    }
+    return this.invokeAction("send", args);
+  }
+
+  /** Add or remove an emoji reaction on a message. */
+  async reactToMessage(
+    channel: string,
+    to: string,
+    messageId: string,
+    options: ReactOptions,
+  ): Promise<DeliveryResult> {
+    const args: Record<string, unknown> = {
+      channel,
+      to,
+      messageId,
+      emoji: options.emoji,
+    };
+    if (options.remove) {
+      args["remove"] = true;
+    }
+    return this.invokeAction("react", args);
+  }
+
+  /** Edit a previously sent message. */
+  async editMessage(
+    channel: string,
+    to: string,
+    messageId: string,
+    text: string,
+  ): Promise<DeliveryResult> {
+    return this.invokeAction("edit", { channel, to, messageId, message: text });
   }
 
   /** Check if the API is configured and available. */
