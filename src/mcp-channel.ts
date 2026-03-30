@@ -211,7 +211,7 @@ export class McpChannel {
               blocks: z
                 .array(
                   z.object({
-                    type: z.string().describe("Block type: buttons, select, or text"),
+                    type: z.string().min(1).describe("Block type (common: buttons, select, text)"),
                     text: z.string().optional().describe("Text content for text blocks"),
                     buttons: z
                       .array(z.object({ label: z.string(), value: z.string() }))
@@ -238,17 +238,9 @@ export class McpChannel {
         }
 
         try {
-          const options: SendMessageOptions = {
-            ...(replyTo ? { replyTo } : {}),
-            ...(interactive ? { interactive } : {}),
-          };
-          const hasOptions = replyTo ?? interactive;
-          const status = await this.notifyHandler(
-            channel,
-            to,
-            text,
-            hasOptions ? options : undefined,
-          );
+          const options: SendMessageOptions | undefined =
+            replyTo || interactive ? { replyTo, interactive } : undefined;
+          const status = await this.notifyHandler(channel, to, text, options);
           return { content: [{ type: "text", text: status }] };
         } catch (error: unknown) {
           return {
