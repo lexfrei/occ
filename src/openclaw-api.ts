@@ -25,6 +25,19 @@ export class OpenClawApi {
 
   /** Send a message directly to a channel/user via /tools/invoke (no agent turn). */
   async sendMessage(channel: string, to: string, text: string): Promise<DeliveryResult> {
+    return this.invokeAction("send", { channel, to, message: text });
+  }
+
+  /** Check if the API is configured and available. */
+  static isConfigured(token: string | undefined): token is string {
+    return typeof token === "string" && token.length > 0;
+  }
+
+  /** POST /tools/invoke with the given action and args, parse delivery result. */
+  private async invokeAction(
+    action: string,
+    args: Record<string, unknown>,
+  ): Promise<DeliveryResult> {
     const url = `${this.baseUrl}/tools/invoke`;
 
     const response = await fetch(url, {
@@ -33,15 +46,7 @@ export class OpenClawApi {
         authorization: `Bearer ${this.token}`,
         "content-type": "application/json",
       }),
-      body: JSON.stringify({
-        tool: "message",
-        action: "send",
-        args: {
-          channel,
-          to,
-          message: text,
-        },
-      }),
+      body: JSON.stringify({ tool: "message", action, args }),
       signal: AbortSignal.timeout(30_000),
     });
 
@@ -63,10 +68,5 @@ export class OpenClawApi {
     } catch {
       return { delivered: true, messageId: undefined };
     }
-  }
-
-  /** Check if the API is configured and available. */
-  static isConfigured(token: string | undefined): token is string {
-    return typeof token === "string" && token.length > 0;
   }
 }
