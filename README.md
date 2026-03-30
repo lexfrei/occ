@@ -22,7 +22,7 @@ OUTGOING (Claude Code → user, synchronous reply):
   Claude Code → reply tool → OCC HTTP response → OpenClaw → messenger
 
 PROACTIVE (Claude Code → user, anytime):
-  Claude Code → notify tool → OCC → POST /hooks/agent → OpenClaw → messenger
+  Claude Code → notify/react/edit_message tool → OCC → POST /tools/invoke → OpenClaw → messenger
 
 SCHEDULED (OpenClaw triggers Claude Code):
   OpenClaw cron/heartbeat → POST /v1/chat/completions → OCC → Claude Code
@@ -164,13 +164,13 @@ Then add to `.claude/settings.local.json`:
 
 ## Configuration
 
-| Variable                 | Default                  | Description                                                               |
-| ------------------------ | ------------------------ | ------------------------------------------------------------------------- |
-| `OCC_PORT`               | `3456`                   | HTTP server port                                                          |
-| `OCC_API_TOKEN`          | `occ-bridge-token`       | Bearer token OpenClaw sends (match `apiKey` in provider config)           |
-| `OPENCLAW_GATEWAY_TOKEN` | —                        | OpenClaw gateway token (enables proactive messaging via notify/send_file) |
-| `OPENCLAW_GATEWAY_URL`   | `http://127.0.0.1:18789` | OpenClaw gateway URL                                                      |
-| `OCC_REPLY_TIMEOUT_MS`   | `120000`                 | Timeout for Claude Code to reply (ms)                                     |
+| Variable                 | Default                  | Description                                                             |
+| ------------------------ | ------------------------ | ----------------------------------------------------------------------- |
+| `OCC_PORT`               | `3456`                   | HTTP server port                                                        |
+| `OCC_API_TOKEN`          | `occ-bridge-token`       | Bearer token OpenClaw sends (match `apiKey` in provider config)         |
+| `OPENCLAW_GATEWAY_TOKEN` | —                        | OpenClaw gateway token (enables notify, send_file, react, edit_message) |
+| `OPENCLAW_GATEWAY_URL`   | `http://127.0.0.1:18789` | OpenClaw gateway URL                                                    |
+| `OCC_REPLY_TIMEOUT_MS`   | `120000`                 | Timeout for Claude Code to reply (ms)                                   |
 
 ## OpenAI-compatible API
 
@@ -187,7 +187,7 @@ src/
   index.ts          Entry point
   bridge.ts         Wires HTTP server, MCP channel, and OpenClaw API
   http-server.ts    OpenAI-compatible HTTP server (Bun.serve)
-  mcp-channel.ts    Claude Code Channel (MCP stdio) with reply/notify/send_file tools
+  mcp-channel.ts    Claude Code Channel (MCP stdio) with 5 tools (reply, notify, send_file, react, edit_message)
   openclaw-api.ts   OpenClaw REST API client for proactive messaging
   context.ts        Request context extraction and formatting
   config.ts         Environment variable loader
@@ -224,6 +224,8 @@ bun run test         # bun test
 - **Images forwarded as URLs only** — image URLs from multimodal messages appear as `[Image: <url>]`. Claude Code cannot view the actual images.
 - **Files sent as text** — `send_file` sends content as text in code fences. Binary attachment support (base64 buffer) is implemented but requires an upstream fix ([openclaw/openclaw#57335](https://github.com/openclaw/openclaw/pull/57335)).
 - **Voice not transcribed** — voice messages arrive as placeholder text. Transcription depends on OpenClaw.
+- **Session not resumable** — if Claude Code process dies, conversation context is lost. No auto-restart or state persistence.
+- **Rate limits** — Claude Code Pro: ~10-40 prompts/5h, Max 5x: ~88K tokens. Each incoming message consumes at least one prompt.
 
 ## License
 
