@@ -83,18 +83,30 @@ export class Bridge {
       const file = await validateAndReadFile(filePath, cwd);
       console.error(`[occ] send_file → ${channel}:${to}: ${file.fileName}`);
 
-      const lang = file.extension || "text";
-      const truncationNote = file.truncated
-        ? `\n[truncated, showing first ${String(file.content.length)} of ${String(file.originalLength)} chars]`
-        : "";
-
-      const message = `${file.fileName}:\n\`\`\`${lang}\n${file.content}\n\`\`\`${truncationNote}`;
-      const result = await api.sendMessage(channel, to, message);
+      const result = await api.sendFile(channel, to, {
+        fileName: file.fileName,
+        contentType: Bridge.extensionToMime(file.extension),
+        buffer: Buffer.from(file.content).toString("base64"),
+      });
       return result.messageId
         ? `File sent to ${channel}:${to} (id: ${result.messageId})`
         : `File sent to ${channel}:${to}`;
     });
 
     console.error("[occ] proactive messaging enabled");
+  }
+
+  private static readonly mimeMap: Record<string, string> = {
+    ts: "text/typescript",
+    js: "text/javascript",
+    py: "text/x-python",
+    json: "application/json",
+    md: "text/markdown",
+    yaml: "text/yaml",
+    yml: "text/yaml",
+  };
+
+  private static extensionToMime(extension: string): string {
+    return Bridge.mimeMap[extension] ?? "text/plain";
   }
 }
