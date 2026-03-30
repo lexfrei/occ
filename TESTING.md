@@ -7,7 +7,7 @@ Comprehensive test scenarios for the OCC bridge (OpenClaw ↔ Claude Code).
 
 ## Testing principles
 
-- **Verify by outcome, not by response code.** A tool returning "success" does not mean the action worked. Always check the actual result in the target system (message appeared in chat, reaction visible, text changed).
+- **Verify both response and outcome.** A successful response code does not guarantee the action worked — the code can lie. Check the tool response AND the actual result in the target system (message appeared in chat, reaction visible, text changed). We do not trust the system, we verify it at every stage.
 - **Don't require specific wording.** Ask Claude Code to perform actions, not to produce exact text. It may phrase responses differently each run.
 - **Use OpenClaw internal IDs.** Tools like `react` and `edit_message` require OpenClaw's internal message ID (returned by `notify`), not the messenger's native ID.
 - **False-success is a bug.** If OCC reports success but the action didn't happen, that's a bug in response validation — not a "partial pass".
