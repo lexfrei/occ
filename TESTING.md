@@ -5,6 +5,13 @@ Comprehensive test scenarios for the OCC bridge (OpenClaw ↔ Claude Code).
 **Environment:** OpenClaw Gateway (Docker) + OCC (Claude Code Channel) + Telegram bot.
 **Preconditions for all tests:** OpenClaw running, OCC connected, Telegram bot paired, auto-approve hooks installed.
 
+## Testing principles
+
+- **Verify by outcome, not by response code.** A tool returning "success" does not mean the action worked. Always check the actual result in the target system (message appeared in chat, reaction visible, text changed).
+- **Don't require specific wording.** Ask Claude Code to perform actions, not to produce exact text. It may phrase responses differently each run.
+- **Use OpenClaw internal IDs.** Tools like `react` and `edit_message` require OpenClaw's internal message ID (returned by `notify`), not the messenger's native ID.
+- **False-success is a bug.** If OCC reports success but the action didn't happen, that's a bug in response validation — not a "partial pass".
+
 ## State Cleanup
 
 Run between test sections or when tests produce unexpected results.
