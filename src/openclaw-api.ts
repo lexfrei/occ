@@ -101,14 +101,26 @@ export class OpenClawApi {
     try {
       const body = (await response.json()) as {
         ok?: boolean;
-        result?: { details?: { messageId?: string } };
+        result?: {
+          details?: {
+            ok?: boolean;
+            messageId?: string;
+            hint?: string;
+            reason?: string;
+          };
+        };
       };
-      const messageId =
-        typeof body.result?.details?.messageId === "string"
-          ? body.result.details.messageId
-          : undefined;
+      const details = body.result?.details;
+      if (details?.ok === false) {
+        const hint = details.hint ?? details.reason ?? "action failed";
+        throw new Error(`OpenClaw action failed: ${hint}`);
+      }
+      const messageId = typeof details?.messageId === "string" ? details.messageId : undefined;
       return { delivered: true, messageId };
-    } catch {
+    } catch (error: unknown) {
+      if (error instanceof Error && error.message.startsWith("OpenClaw")) {
+        throw error;
+      }
       return { delivered: true, messageId: undefined };
     }
   }

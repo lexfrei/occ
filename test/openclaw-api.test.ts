@@ -37,6 +37,15 @@ describe("OpenClawApi", () => {
           });
         }
 
+        if (body.includes("action-failed")) {
+          return Response.json({
+            ok: true,
+            result: {
+              details: { ok: false, reason: "error", hint: "Reaction failed. Do not retry." },
+            },
+          });
+        }
+
         return Response.json({ ok: true, result: {} });
       },
     });
@@ -95,6 +104,18 @@ describe("OpenClawApi", () => {
     } catch (error: unknown) {
       expect(error).toBeInstanceOf(Error);
       expect((error as Error).message).toContain("OpenClaw POST failed: 500");
+    }
+  });
+
+  it("throws when API returns ok:true but details.ok is false", async () => {
+    const api = new OpenClawApi(`http://127.0.0.1:${String(port)}`, "token");
+
+    try {
+      await api.sendMessage("telegram", "123", "action-failed");
+      expect.unreachable("should have thrown");
+    } catch (error: unknown) {
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toContain("Reaction failed. Do not retry.");
     }
   });
 
