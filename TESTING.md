@@ -393,22 +393,22 @@ Status: `[ ]` not tested, `[x]` passed, `[!]` failed, `[-]` not applicable, `[~]
 
 ## 13. Known Limitations (document, don't fix)
 
-| #     | Limitation                             | Expected behavior                                                                                            |
-| ----- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| 13.1  | ~~Images not forwarded~~ FIXED         | Image URLs now forwarded as `[Image: <url>]` in notifications. Claude can't view images but knows they exist |
-| 13.2  | Voice not transcribed                  | Voice messages arrive as placeholder text, not transcription (OpenClaw limitation)                           |
-| 13.3  | No reactions from Claude               | Claude cannot send emoji reactions (tool calling not forwarded to custom providers)                          |
-| 13.4  | No message editing                     | Claude cannot edit previously sent messages                                                                  |
-| 13.5  | No inline keyboards                    | Claude cannot create Telegram inline keyboards                                                               |
-| 13.6  | No threading                           | Claude cannot reply to specific messages in a thread                                                         |
-| 13.7  | ~~No file attachments~~ IMPROVED       | `send_file` wraps content in code fences with syntax highlighting. Still text, not binary attachment         |
-| 13.8  | ~~Single-chunk streaming~~ FIXED       | Response now split into ~50-char word-boundary chunks for gradual delivery                                   |
-| 13.9  | ~~Skills not visible~~ PARTIALLY FIXED | System prompt summary (first 500 chars) forwarded as `[Agent context: ...]`                                  |
-| 13.10 | ~~Memory not visible~~ PARTIALLY FIXED | System prompt (which includes memory) summary forwarded. Full SOUL.md/MEMORY.md still not available          |
-| 13.11 | Sequential only                        | One request at a time per OCC instance                                                                       |
-| 13.12 | ~~No delivery confirmation~~ FIXED     | `notify`/`send_file` tools return message ID from OpenClaw API when available                                |
-| 13.13 | Claude Code rate limits                | Pro: ~10-40 prompts/5h. Max 5x: ~88K tokens. Each message = 1+ prompts                                       |
-| 13.14 | Session not resumable                  | If Claude Code process dies, session context is lost. No auto-restart                                        |
+| #     | Limitation                             | Expected behavior                                                                                                                      |
+| ----- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| 13.1  | ~~Images not forwarded~~ FIXED         | Image URLs now forwarded as `[Image: <url>]` in notifications. Claude can't view images but knows they exist                           |
+| 13.2  | Voice not transcribed                  | Voice messages arrive as placeholder text, not transcription (OpenClaw limitation)                                                     |
+| 13.3  | No reactions from Claude               | Claude cannot send emoji reactions (tool calling not forwarded to custom providers)                                                    |
+| 13.4  | No message editing                     | Claude cannot edit previously sent messages                                                                                            |
+| 13.5  | No inline keyboards                    | Claude cannot create Telegram inline keyboards                                                                                         |
+| 13.6  | No threading                           | Claude cannot reply to specific messages in a thread                                                                                   |
+| 13.7  | ~~No file attachments~~ IMPROVED       | `send_file` sends text in code fences. Binary attachment via base64 buffer ready but blocked on upstream fix (openclaw/openclaw#57335) |
+| 13.8  | ~~Single-chunk streaming~~ FIXED       | Response now split into ~50-char word-boundary chunks for gradual delivery                                                             |
+| 13.9  | ~~Skills not visible~~ PARTIALLY FIXED | System prompt summary (first 500 chars) forwarded as `[Agent context: ...]`                                                            |
+| 13.10 | ~~Memory not visible~~ PARTIALLY FIXED | System prompt (which includes memory) summary forwarded. Full SOUL.md/MEMORY.md still not available                                    |
+| 13.11 | Sequential only                        | One request at a time per OCC instance                                                                                                 |
+| 13.12 | ~~No delivery confirmation~~ FIXED     | `notify`/`send_file` tools return message ID from OpenClaw API when available                                                          |
+| 13.13 | Claude Code rate limits                | Pro: ~10-40 prompts/5h. Max 5x: ~88K tokens. Each message = 1+ prompts                                                                 |
+| 13.14 | Session not resumable                  | If Claude Code process dies, session context is lost. No auto-restart                                                                  |
 
 ---
 

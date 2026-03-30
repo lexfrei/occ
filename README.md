@@ -220,7 +220,9 @@ bun run test         # bun test
 - **No tool calling from OpenClaw** — custom model providers don't receive tool definitions from OpenClaw. Claude Code uses its own tools via MCP, not OpenClaw's.
 - **System prompt partially forwarded** — first 500 chars of OpenClaw's system prompt forwarded as `[Agent context: ...]`. Full SOUL.md/MEMORY.md not available. Up to 3 preceding conversation messages included for context.
 - **Images forwarded as URLs only** — image URLs from multimodal messages appear as `[Image: <url>]`. Claude Code cannot view the actual images.
-- **Files sent as text** — `send_file` wraps content in code fences, but sends as text message, not as a platform file attachment.
+- **Files sent as text** — `send_file` sends content as text in code fences. Binary attachment support (base64 buffer) is implemented but requires an upstream fix ([openclaw/openclaw#57335](https://github.com/openclaw/openclaw/pull/57335)).
+- **Voice not transcribed** — voice messages arrive as placeholder text. Transcription depends on OpenClaw.
+- **No reactions, editing, or threading** — Claude Code cannot send emoji reactions, edit messages, or reply in threads through OCC.
 
 ## License
 
