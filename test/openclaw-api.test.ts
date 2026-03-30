@@ -37,6 +37,15 @@ describe("OpenClawApi", () => {
           });
         }
 
+        if (body.includes("action-failed")) {
+          return Response.json({
+            ok: true,
+            result: {
+              details: { ok: false, reason: "error", hint: "Reaction failed. Do not retry." },
+            },
+          });
+        }
+
         return Response.json({ ok: true, result: {} });
       },
     });
@@ -98,6 +107,18 @@ describe("OpenClawApi", () => {
     }
   });
 
+  it("throws when API returns ok:true but details.ok is false", async () => {
+    const api = new OpenClawApi(`http://127.0.0.1:${String(port)}`, "token");
+
+    try {
+      await api.sendMessage("telegram", "123", "action-failed");
+      expect.unreachable("should have thrown");
+    } catch (error: unknown) {
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toContain("Reaction failed. Do not retry.");
+    }
+  });
+
   it("throws on connection error", async () => {
     const api = new OpenClawApi("http://127.0.0.1:1", "token");
 
@@ -107,5 +128,166 @@ describe("OpenClawApi", () => {
     } catch (error: unknown) {
       expect(error).toBeInstanceOf(Error);
     }
+  });
+
+  describe("sendMessage with options", () => {
+    it("includes replyTo in args when provided", async () => {
+      const api = new OpenClawApi(`http://127.0.0.1:${String(port)}`, "token");
+
+      await api.sendMessage("telegram", "123", "reply test", { replyTo: "msg-99" });
+
+      const body = JSON.parse(lastRequest?.body ?? "{}") as Record<string, unknown>;
+      const args = body["args"] as Record<string, unknown>;
+
+      expect(body["action"]).toBe("send");
+      expect(args["replyTo"]).toBe("msg-99");
+    });
+
+    it("includes interactive blocks in args when provided", async () => {
+      const api = new OpenClawApi(`http://127.0.0.1:${String(port)}`, "token");
+      const interactive = {
+        blocks: [{ type: "buttons", buttons: [{ label: "Yes", value: "yes" }] }],
+      };
+
+      await api.sendMessage("telegram", "123", "pick one", { interactive });
+
+      const body = JSON.parse(lastRequest?.body ?? "{}") as Record<string, unknown>;
+      const args = body["args"] as Record<string, unknown>;
+
+      expect(args["interactive"]).toEqual(interactive);
+    });
+
+    it("passes interactive text blocks through to API", async () => {
+      const api = new OpenClawApi(`http://127.0.0.1:${String(port)}`, "token");
+      const interactive = {
+        blocks: [
+          { type: "text", text: "Pick an option:" },
+          { type: "buttons", buttons: [{ label: "Go", value: "go" }] },
+        ],
+      };
+
+      await api.sendMessage("telegram", "123", "prompt", { interactive });
+
+      const body = JSON.parse(lastRequest?.body ?? "{}") as Record<string, unknown>;
+      const args = body["args"] as Record<string, unknown>;
+      const sent = args["interactive"] as { blocks: { type: string; text?: string }[] };
+
+      expect(sent.blocks[0]?.type).toBe("text");
+      expect(sent.blocks[0]?.text).toBe("Pick an option:");
+    });
+
+    it("omits optional fields when not provided", async () => {
+      const api = new OpenClawApi(`http://127.0.0.1:${String(port)}`, "token");
+
+      await api.sendMessage("telegram", "123", "plain text");
+
+      const body = JSON.parse(lastRequest?.body ?? "{}") as Record<string, unknown>;
+      const args = body["args"] as Record<string, unknown>;
+
+      expect(args["replyTo"]).toBeUndefined();
+      expect(args["interactive"]).toBeUndefined();
+    });
+  });
+
+  describe("reactToMessage", () => {
+    it("sends react action with correct structure", async () => {
+      const api = new OpenClawApi(`http://127.0.0.1:${String(port)}`, "token");
+
+      await api.reactToMessage("telegram", "123", "msg-1", { emoji: "thumbsup" });
+
+      const body = JSON.parse(lastRequest?.body ?? "{}") as Record<string, unknown>;
+      const args = body["args"] as Record<string, unknown>;
+
+      expect(body["tool"]).toBe("message");
+      expect(body["action"]).toBe("react");
+      expect(args["channel"]).toBe("telegram");
+      expect(args["to"]).toBe("123");
+      expect(args["messageId"]).toBe("msg-1");
+      expect(args["emoji"]).toBe("thumbsup");
+    });
+
+    it("includes remove flag when set", async () => {
+      const api = new OpenClawApi(`http://127.0.0.1:${String(port)}`, "token");
+
+      await api.reactToMessage("telegram", "123", "msg-1", { emoji: "heart", remove: true });
+
+      const body = JSON.parse(lastRequest?.body ?? "{}") as Record<string, unknown>;
+      const args = body["args"] as Record<string, unknown>;
+
+      expect(args["remove"]).toBe(true);
+    });
+
+    it("omits remove when not requested", async () => {
+      const api = new OpenClawApi(`http://127.0.0.1:${String(port)}`, "token");
+
+      await api.reactToMessage("telegram", "123", "msg-1", { emoji: "fire" });
+
+      const body = JSON.parse(lastRequest?.body ?? "{}") as Record<string, unknown>;
+      const args = body["args"] as Record<string, unknown>;
+
+      expect(args["remove"]).toBeUndefined();
+    });
+
+    it("returns messageId from react response", async () => {
+      const api = new OpenClawApi(`http://127.0.0.1:${String(port)}`, "token");
+
+      const result = await api.reactToMessage("telegram", "123", "msg-1", {
+        emoji: "with-id",
+      });
+
+      expect(result.delivered).toBe(true);
+      expect(result.messageId).toBe("msg-456");
+    });
+
+    it("throws on react API error", async () => {
+      const api = new OpenClawApi(`http://127.0.0.1:${String(port)}`, "token");
+
+      try {
+        await api.reactToMessage("telegram", "123", "msg-1", { emoji: "trigger-error" });
+        expect.unreachable("should have thrown");
+      } catch (error: unknown) {
+        expect(error).toBeInstanceOf(Error);
+        expect((error as Error).message).toContain("OpenClaw POST failed: 500");
+      }
+    });
+  });
+
+  describe("editMessage", () => {
+    it("sends edit action with correct structure", async () => {
+      const api = new OpenClawApi(`http://127.0.0.1:${String(port)}`, "token");
+
+      await api.editMessage("telegram", "123", "msg-1", "updated text");
+
+      const body = JSON.parse(lastRequest?.body ?? "{}") as Record<string, unknown>;
+      const args = body["args"] as Record<string, unknown>;
+
+      expect(body["tool"]).toBe("message");
+      expect(body["action"]).toBe("edit");
+      expect(args["channel"]).toBe("telegram");
+      expect(args["to"]).toBe("123");
+      expect(args["messageId"]).toBe("msg-1");
+      expect(args["message"]).toBe("updated text");
+    });
+
+    it("returns messageId from edit response", async () => {
+      const api = new OpenClawApi(`http://127.0.0.1:${String(port)}`, "token");
+
+      const result = await api.editMessage("telegram", "123", "msg-1", "with-id update");
+
+      expect(result.delivered).toBe(true);
+      expect(result.messageId).toBe("msg-456");
+    });
+
+    it("throws on edit API error", async () => {
+      const api = new OpenClawApi(`http://127.0.0.1:${String(port)}`, "token");
+
+      try {
+        await api.editMessage("telegram", "123", "msg-1", "trigger-error");
+        expect.unreachable("should have thrown");
+      } catch (error: unknown) {
+        expect(error).toBeInstanceOf(Error);
+        expect((error as Error).message).toContain("OpenClaw POST failed: 500");
+      }
+    });
   });
 });

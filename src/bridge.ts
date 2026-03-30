@@ -71,9 +71,9 @@ export class Bridge {
     // should not shift if process.chdir() is called later
     const cwd = process.cwd();
 
-    this.channel.onNotify(async (channel, to, text) => {
+    this.channel.onNotify(async (channel, to, text, options) => {
       console.error(`[occ] proactive → ${channel}:${to}: ${text.slice(0, 80)}`);
-      const result = await api.sendMessage(channel, to, text);
+      const result = await api.sendMessage(channel, to, text, options);
       return result.messageId
         ? `Sent to ${channel}:${to} (id: ${result.messageId})`
         : `Sent to ${channel}:${to}`;
@@ -93,6 +93,23 @@ export class Bridge {
       return result.messageId
         ? `File sent to ${channel}:${to} (id: ${result.messageId})`
         : `File sent to ${channel}:${to}`;
+    });
+
+    this.channel.onReact(async (channel, to, messageId, options) => {
+      console.error(`[occ] react → ${channel}:${to}: ${options.emoji} on ${messageId}`);
+      const result = await api.reactToMessage(channel, to, messageId, options);
+      const verb = options.remove ? "Removed" : "Reacted";
+      return result.messageId
+        ? `${verb} ${options.emoji} on ${messageId} (id: ${result.messageId})`
+        : `${verb} ${options.emoji} on ${messageId}`;
+    });
+
+    this.channel.onEditMessage(async (channel, to, messageId, text) => {
+      console.error(`[occ] edit → ${channel}:${to}: ${messageId}`);
+      const result = await api.editMessage(channel, to, messageId, text);
+      return result.messageId
+        ? `Edited ${messageId} in ${channel}:${to} (id: ${result.messageId})`
+        : `Edited ${messageId} in ${channel}:${to}`;
     });
 
     console.error("[occ] proactive messaging enabled");

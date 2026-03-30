@@ -5,6 +5,13 @@ Comprehensive test scenarios for the OCC bridge (OpenClaw ↔ Claude Code).
 **Environment:** OpenClaw Gateway (Docker) + OCC (Claude Code Channel) + Telegram bot.
 **Preconditions for all tests:** OpenClaw running, OCC connected, Telegram bot paired, auto-approve hooks installed.
 
+## Testing principles
+
+- **Verify both response and outcome.** A successful response code does not guarantee the action worked — the code can lie. Check the tool response AND the actual result in the target system (message appeared in chat, reaction visible, text changed). We do not trust the system, we verify it at every stage.
+- **Don't require specific wording.** Ask Claude Code to perform actions, not to produce exact text. It may phrase responses differently each run.
+- **Use OpenClaw internal IDs.** Tools like `react` and `edit_message` require OpenClaw's internal message ID (returned by `notify`), not the messenger's native ID.
+- **False-success is a bug.** If OCC reports success but the action didn't happen, that's a bug in response validation — not a "partial pass".
+
 ## State Cleanup
 
 Run between test sections or when tests produce unexpected results.
@@ -397,10 +404,10 @@ Status: `[ ]` not tested, `[x]` passed, `[!]` failed, `[-]` not applicable, `[~]
 | ----- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | 13.1  | ~~Images not forwarded~~ FIXED         | Image URLs now forwarded as `[Image: <url>]` in notifications. Claude can't view images but knows they exist                           |
 | 13.2  | Voice not transcribed                  | Voice messages arrive as placeholder text, not transcription (OpenClaw limitation)                                                     |
-| 13.3  | No reactions from Claude               | Claude cannot send emoji reactions (tool calling not forwarded to custom providers)                                                    |
-| 13.4  | No message editing                     | Claude cannot edit previously sent messages                                                                                            |
-| 13.5  | No inline keyboards                    | Claude cannot create Telegram inline keyboards                                                                                         |
-| 13.6  | No threading                           | Claude cannot reply to specific messages in a thread                                                                                   |
+| 13.3  | ~~No reactions from Claude~~ FIXED     | `react` tool adds/removes emoji reactions via OpenClaw API                                                                             |
+| 13.4  | ~~No message editing~~ FIXED           | `edit_message` tool edits previously sent messages via OpenClaw API                                                                    |
+| 13.5  | ~~No inline keyboards~~ FIXED          | `notify` tool accepts `interactive` parameter with buttons and selects                                                                 |
+| 13.6  | ~~No threading~~ FIXED                 | `notify` tool accepts `replyTo` parameter for threading/replying to specific messages                                                  |
 | 13.7  | ~~No file attachments~~ IMPROVED       | `send_file` sends text in code fences. Binary attachment via base64 buffer ready but blocked on upstream fix (openclaw/openclaw#57335) |
 | 13.8  | ~~Single-chunk streaming~~ FIXED       | Response now split into ~50-char word-boundary chunks for gradual delivery                                                             |
 | 13.9  | ~~Skills not visible~~ PARTIALLY FIXED | System prompt summary (first 500 chars) forwarded as `[Agent context: ...]`                                                            |

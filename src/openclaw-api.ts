@@ -4,6 +4,8 @@
  * without triggering an agent turn.
  */
 
+import { type ReactOptions, type SendMessageOptions } from "./types.js";
+
 /** Result of sending a message through OpenClaw. */
 export interface DeliveryResult {
   readonly delivered: boolean;
@@ -24,7 +26,61 @@ export class OpenClawApi {
   }
 
   /** Send a message directly to a channel/user via /tools/invoke (no agent turn). */
-  async sendMessage(channel: string, to: string, text: string): Promise<DeliveryResult> {
+  async sendMessage(
+    channel: string,
+    to: string,
+    text: string,
+    options?: SendMessageOptions,
+  ): Promise<DeliveryResult> {
+    const args: Record<string, unknown> = { channel, to, message: text };
+    if (options?.replyTo) {
+      args["replyTo"] = options.replyTo;
+    }
+    if (options?.interactive) {
+      args["interactive"] = options.interactive;
+    }
+    return this.invokeAction("send", args);
+  }
+
+  /** Add or remove an emoji reaction on a message. */
+  async reactToMessage(
+    channel: string,
+    to: string,
+    messageId: string,
+    options: ReactOptions,
+  ): Promise<DeliveryResult> {
+    const args: Record<string, unknown> = {
+      channel,
+      to,
+      messageId,
+      emoji: options.emoji,
+    };
+    if (options.remove) {
+      args["remove"] = true;
+    }
+    return this.invokeAction("react", args);
+  }
+
+  /** Edit a previously sent message. */
+  async editMessage(
+    channel: string,
+    to: string,
+    messageId: string,
+    text: string,
+  ): Promise<DeliveryResult> {
+    return this.invokeAction("edit", { channel, to, messageId, message: text });
+  }
+
+  /** Check if the API is configured and available. */
+  static isConfigured(token: string | undefined): token is string {
+    return typeof token === "string" && token.length > 0;
+  }
+
+  /** POST /tools/invoke with the given action and args, parse delivery result. */
+  private async invokeAction(
+    action: string,
+    args: Record<string, unknown>,
+  ): Promise<DeliveryResult> {
     const url = `${this.baseUrl}/tools/invoke`;
 
     const response = await fetch(url, {
@@ -33,15 +89,7 @@ export class OpenClawApi {
         authorization: `Bearer ${this.token}`,
         "content-type": "application/json",
       }),
-      body: JSON.stringify({
-        tool: "message",
-        action: "send",
-        args: {
-          channel,
-          to,
-          message: text,
-        },
-      }),
+      body: JSON.stringify({ tool: "message", action, args }),
       signal: AbortSignal.timeout(30_000),
     });
 
@@ -53,20 +101,27 @@ export class OpenClawApi {
     try {
       const body = (await response.json()) as {
         ok?: boolean;
-        result?: { details?: { messageId?: string } };
+        result?: {
+          details?: {
+            ok?: boolean;
+            messageId?: string;
+            hint?: string;
+            reason?: string;
+          };
+        };
       };
-      const messageId =
-        typeof body.result?.details?.messageId === "string"
-          ? body.result.details.messageId
-          : undefined;
+      const details = body.result?.details;
+      if (details?.ok === false) {
+        const hint = details.hint ?? details.reason ?? "action failed";
+        throw new Error(`OpenClaw action failed: ${hint}`);
+      }
+      const messageId = typeof details?.messageId === "string" ? details.messageId : undefined;
       return { delivered: true, messageId };
-    } catch {
+    } catch (error: unknown) {
+      if (error instanceof Error && error.message.startsWith("OpenClaw")) {
+        throw error;
+      }
       return { delivered: true, messageId: undefined };
     }
-  }
-
-  /** Check if the API is configured and available. */
-  static isConfigured(token: string | undefined): token is string {
-    return typeof token === "string" && token.length > 0;
   }
 }
